@@ -71,7 +71,7 @@ export const createReview: RequestHandler = async (req, res, next) => {
       listing.reviewIds = [];
     }
 
-    listing.reviewIds.push(savedReview._id);
+    listing.reviewIds.push(savedReview?._id);
 
     // Calculate new average rating
     const totalReviews = listing.reviewIds.length;
