@@ -1,19 +1,36 @@
 import { RequestHandler } from 'express';
 import Listing from '../models/Listings';
+import { DeletionRequestEnum } from '../utils/enums';
+import { string } from 'joi';
+import { uploadOnCloudinary } from '../utils/cloudinary';
 
 // Create a new listing
 export const createListing: RequestHandler = async (req, res, next) => {
   try {
-    const { name, description, geoLocation, price } = req.body;
-
+    let { name, description, geoLocation, price, serviceType } = req.body;
+    geoLocation = JSON.parse(req.body.geoLocation);
     if (!name) return next({ statusCode: 400, message: 'Name is required' });
     if (!description) return next({ statusCode: 400, message: 'Description is required' });
     if (!geoLocation?.type || !geoLocation?.coordinates)
       return next({ statusCode: 400, message: 'Geo location is required' });
     if (price == null) return next({ statusCode: 400, message: 'Price is required' });
-    if (!req.auth?._id) return next({ statusCode: 401, message: 'User authentication required' });
+    const files = req.files as Express.Multer.File[];
 
-    const listing = new Listing({ ...req.body, userId: req.auth.uid });
+    const photos = await Promise.all(
+      files.map(async (file) => {
+        const result = await uploadOnCloudinary(file.path);
+        return { url: result.url };
+      })
+    );
+    const listing = new Listing({
+      name,
+      description,
+      geoLocation,
+      price,
+      serviceType,
+      userId: req.auth.uid,
+      photos: photos || [],
+    });
     const savedListing = await listing.save();
     res.status(201).json({ message: 'Listing created', data: savedListing });
   } catch (error) {
@@ -149,7 +166,7 @@ export const requestDeleteListing: RequestHandler = async (req, res, next) => {
 
     const updated = await Listing.findByIdAndUpdate(
       id,
-      { deletionRequest: { status: 'Pending', requestedAt: new Date() } },
+      { deletionRequest: { status: DeletionRequestEnum.PENDING, requestedAt: new Date() } },
       { new: true }
     );
 
@@ -167,11 +184,11 @@ export const reviewDeleteListing: RequestHandler = async (req, res, next) => {
     const { id } = req.params;
     const { action } = req.body; // 'Approved' | 'Rejected'
 
-    if (!['Approved', 'Rejected'].includes(action)) {
+    if (![DeletionRequestEnum.APPROVED, DeletionRequestEnum.REJECTED].includes(action)) {
       return next({ statusCode: 400, message: 'Invalid action. Use Approved or Rejected' });
     }
 
-    if (action === 'Approved') {
+    if (action === DeletionRequestEnum.APPROVED) {
       const deleted = await Listing.findByIdAndDelete(id);
       if (!deleted) {
         return next({ statusCode: 404, message: 'Listing not found' });
@@ -182,7 +199,7 @@ export const reviewDeleteListing: RequestHandler = async (req, res, next) => {
 
     const listing = await Listing.findByIdAndUpdate(
       id,
-      { deletionRequest: { status: 'Rejected', reviewedAt: new Date() } },
+      { deletionRequest: { status: DeletionRequestEnum.REJECTED, reviewedAt: new Date() } },
       { new: true }
     );
 
@@ -198,7 +215,7 @@ export const reviewDeleteListing: RequestHandler = async (req, res, next) => {
 
 export const getDeletionRequests: RequestHandler = async (req, res, next) => {
   try {
-    const listings = await Listing.find({ 'deletionRequest.status': 'Pending' })
+    const listings = await Listing.find({ 'deletionRequest.status': DeletionRequestEnum.PENDING })
       .select('-bookingIds -userId')
       .sort({ 'deletionRequest.requestedAt': 1 });
 

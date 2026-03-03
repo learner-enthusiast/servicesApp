@@ -8,5 +8,19 @@ const ORIGIN = process.env.ORIGIN;
 const JWT_SECRET = process.env.JWT_SECRET || 'unsafe_secret';
 const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
 const MAPBOX_BASE_URL = process.env.MAPBOX_BASE_URL || 'https://api.mapbox.com';
+const CloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
+const CloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
+const CloudinaryCloudName = process.env.CLOUDINARY_CLOUD_NAME;
 
-export { ORIGIN, PORT, MONGO_URI, MONGO_OPTIONS, JWT_SECRET, MAPBOX_ACCESS_TOKEN, MAPBOX_BASE_URL };
+export {
+  ORIGIN,
+  PORT,
+  MONGO_URI,
+  MONGO_OPTIONS,
+  JWT_SECRET,
+  MAPBOX_ACCESS_TOKEN,
+  MAPBOX_BASE_URL,
+  CloudinaryApiKey,
+  CloudinaryApiSecret,
+  CloudinaryCloudName,
+};

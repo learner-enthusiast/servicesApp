@@ -4,6 +4,7 @@ import jwt from '../../utils/jwt';
 import crypt from '../../utils/crypt';
 import Account from '../../models/Account';
 import { UserTypeEnum } from '../../utils/enums';
+import { uploadOnCloudinary } from '../../utils/cloudinary';
 
 const register: RequestHandler = async (req, res, next) => {
   try {
@@ -21,6 +22,7 @@ const register: RequestHandler = async (req, res, next) => {
 
     const { username, password, userType } = req.body;
 
+    const avatar = await uploadOnCloudinary(req.file?.path);
     // Verify account username as unique
     const found = await Account.findOne({ username });
 
@@ -39,11 +41,16 @@ const register: RequestHandler = async (req, res, next) => {
       username,
       password: hash,
       ...(userType && { type: userType }),
+      ...(avatar && { photo: avatar?.url }),
     });
     await account.save();
 
     // Generate access token
-    const token = jwt.signToken({ uid: account._id, role: account.role });
+    const token = jwt.signToken({
+      uid: account._id,
+      role: account.role,
+      ...(userType && { type: userType }),
+    });
 
     // Exclude password from response
     const { password: _, ...data } = account.toObject();

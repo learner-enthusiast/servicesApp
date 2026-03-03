@@ -1,12 +1,13 @@
 import { RequestHandler } from 'express';
 import Booking from '../models/Bookings';
 import Listing from '../models/Listings';
+import { BookingStatusEnum, UserRoleEnum } from '../utils/enums';
+import { uploadMultipleToCloudinary } from '../utils/cloudinary';
 
 // Create a new booking
 export const createBooking: RequestHandler = async (req, res, next) => {
   try {
     const { listingId, scheduledDate } = req.body;
-
     if (!listingId) {
       return next({ statusCode: 400, message: 'listingId is required' });
     }
@@ -185,7 +186,8 @@ export const cancelBooking: RequestHandler = async (req, res, next) => {
     if (!isCustomer && !isListingOwner && !isAdmin) {
       return next({ statusCode: 403, message: 'Unauthorized to cancel this booking' });
     }
-
+    booking.cancelledBy = req.auth?.uid;
+    booking.cancelledAt = new Date();
     booking.status = BookingStatusEnum.CANCELLED;
     const updatedBooking = await booking.save();
 
@@ -260,6 +262,60 @@ export const approveReschedule: RequestHandler = async (req, res, next) => {
     const updatedBooking = await booking.save();
 
     res.status(200).json({ message: 'Reschedule approved', data: updatedBooking });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const approveBooking: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) return next({ statusCode: 404, message: 'Booking not found' });
+
+    const listing = await Listing.findById(booking.listingId);
+    const isOwner = listing?.userId.toString() === req.auth?._id.toString();
+    const isAdmin = req.auth?.role === UserRoleEnum.ADMIN;
+    if (!isOwner && !isAdmin) {
+      return next({ statusCode: 403, message: 'Unauthorized' });
+    }
+
+    booking.status = BookingStatusEnum.CONFIRMED;
+    const updated = await booking.save();
+    res.status(200).json({ message: 'Booking approved', data: updated });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadBookingPhotos: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+    if (!booking) return next({ statusCode: 404, message: 'Booking not found' });
+
+    const listing = await Listing.findById(booking.listingId);
+    const isBookingUser = booking.customerId.toString() === req.auth?._id.toString();
+    if (!isBookingUser) {
+      return next({ statusCode: 403, message: 'Unauthorized' });
+    }
+
+    // Expecting files in req.files.beforePhotos and req.files.afterPhotos
+    const beforeFiles =
+      uploadMultipleToCloudinary(req.files?.beforePhotos as Express.Multer.File[]) || [];
+    const afterFiles =
+      uploadMultipleToCloudinary(req.files?.afterPhotos as Express.Multer.File[]) || [];
+
+    if (beforeFiles.length > 0) {
+      // Save the path or filename as per your schema
+      booking.beforePhotos = beforeFiles;
+    }
+    if (afterFiles.length > 0) {
+      booking.afterPhotos = afterFiles;
+    }
+    await booking.save();
+
+    res.status(200).json({ message: 'Photos uploaded', data: booking });
   } catch (error) {
     next(error);
   }

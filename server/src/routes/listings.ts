@@ -12,6 +12,7 @@ import checkUserType from '../middlewares/check-userType';
 import errorHandler from '../middlewares/error-handler';
 import checkBearerToken from '../middlewares/check-bearer-token';
 import checkRole from '../middlewares/check-roles';
+import { multerUpload } from '../middlewares/multer';
 
 const router = Router();
 router.use(checkBearerToken);
@@ -25,7 +26,7 @@ router.get('/:id', getListingById);
 
 // Create a new listing (admin or user)
 router.use(checkUserType('SERVICE_PROVIDER'));
-router.post('/', createListing);
+router.post('/', multerUpload.array('photos', 5), createListing);
 
 // Update a listing (admin or user)
 router.put('/:id', updateListing);

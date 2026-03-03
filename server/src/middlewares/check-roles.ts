@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
  * Middleware to check if the authenticated user matches the required role ('admin' or 'user').
  * Usage: app.use(checkRole('admin')) or app.use(checkRole('user'))
  */
-const checkRole = (role: 'admin' | 'user') => {
+const checkRole = (role: 'ADMIN' | 'USER') => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.auth || !req.auth.role) {
       res.status(401).json({ message: 'Unauthorized: No auth info found.' });

@@ -8,10 +8,14 @@ import {
   cancelBooking,
   getBookingsByListingId,
   getBookingsByCustomerId,
+  approveBooking,
+  uploadBookingPhotos,
 } from '../controllers/booking';
 import checkBearerToken from '../middlewares/check-bearer-token';
 import checkRole from '../middlewares/check-roles';
 import errorHandler from '../middlewares/error-handler';
+import { multerUpload } from '../middlewares/multer';
+import { UserRoleEnum } from '../utils/enums';
 
 const router = Router();
 
@@ -30,7 +34,15 @@ router.get('/listing/:listingId', getBookingsByListingId);
 router.get('/:id', getBookingById);
 
 // Create a new booking (user only)
-router.post('/', checkRole('user'), createBooking);
+router.post('/', checkRole(UserRoleEnum.USER), createBooking);
+router.post('/:id/approve', approveBooking);
+
+// Upload before/after photos for a booking (by customer)
+router.post(
+  '/:id/photos',
+  multerUpload.fields([{ name: 'beforePhotos' }, { name: 'afterPhotos' }]),
+  uploadBookingPhotos
+);
 
 // Update booking status (listing owner or admin)
 router.patch('/:id/status', updateBookingStatus);

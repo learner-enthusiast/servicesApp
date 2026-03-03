@@ -71,7 +71,10 @@ export const UserTypeEnum = Object.freeze({
   CUSTOMER: 'CUSTOMER',
   SERVICE_PROVIDER: 'SERVICE_PROVIDER',
 });
-
+export const UserRoleEnum = Object.freeze({
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+});
 export const ListingStatusEnum = Object.freeze({
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
@@ -80,4 +83,11 @@ export const ListingStatusEnum = Object.freeze({
 export const CancelledByEnum = Object.freeze({
   CUSTOMER: 'CUSTOMER',
   SERVICE_PROVIDER: 'SERVICE_PROVIDER',
+});
+
+export const DeletionRequestEnum = Object.freeze({
+  NONE: 'NONE',
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
 });

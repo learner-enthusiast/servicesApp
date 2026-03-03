@@ -3,13 +3,14 @@ import { Types } from 'mongoose';
 export interface Account {
   username: string;
   password: string;
-  role: 'user' | 'admin';
-  type?: 'Customer' | 'ServiceProvider';
+  role: 'USER' | 'ADMIN';
+  type?: 'CUSTOMER' | 'SERVICE_PROVIDER';
   defaultLocation?: string;
   bookingIds?: string[];
   listingIds?: string[];
   createdAt?: Date;
   updatedAt?: Date;
+  photo?: string;
 }
 
 export interface Listing {
@@ -33,6 +34,11 @@ export interface Listing {
     requestedAt?: Date;
     reviewedAt?: Date;
   };
+  photos: {
+    url: string;
+    isPrimary?: boolean;
+    uploadedAt?: Date;
+  }[];
 }
 
 export interface Booking {
@@ -58,6 +64,16 @@ export interface Booking {
   reviewId?: string | Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
+  beforePhotos: {
+    url: string;
+    isPrimary?: boolean;
+    uploadedAt?: Date;
+  }[];
+  afterPhotos: {
+    url: string;
+    isPrimary?: boolean;
+    uploadedAt?: Date;
+  }[];
 }
 export interface Review {
   listingId: string | Types.ObjectId;

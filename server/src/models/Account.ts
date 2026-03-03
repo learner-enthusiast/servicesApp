@@ -1,6 +1,6 @@
 import { type Document, model, Schema } from 'mongoose';
 import { type Account } from '../@types';
-import { UserTypeEnum } from '../utils/enums';
+import { UserRoleEnum, UserTypeEnum } from '../utils/enums';
 
 interface I extends Document, Account {}
 
@@ -19,14 +19,17 @@ const instance = new Schema<I>(
     role: {
       type: String,
       required: true,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: Object.values(UserRoleEnum),
+      default: UserRoleEnum.USER,
     },
     type: {
       type: String,
       enum: Object.values(UserTypeEnum),
     },
     defaultLocation: {
+      type: String,
+    },
+    photo: {
       type: String,
     },
     bookingIds: [
