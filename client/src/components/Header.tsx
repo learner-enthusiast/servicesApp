@@ -1,41 +1,49 @@
-import React, { Fragment, type MouseEventHandler, useState } from 'react'
-import { useModalStore } from 'store/useModalStore'
-import { useAuth } from 'contexts/AuthContext'
-import OnlineIndicator from 'components/OnlineIndicator'
-import { AppBar, IconButton, Avatar, Popover, List, ListSubheader, ListItemButton } from '@mui/material'
+import React, { Fragment, type MouseEventHandler, useState } from 'react';
+import { useModalStore } from 'store/useModalStore';
+import { useAuth } from 'contexts/AuthContext';
+import OnlineIndicator from 'components/OnlineIndicator';
+import {
+  AppBar,
+  IconButton,
+  Avatar,
+  Popover,
+  List,
+  ListSubheader,
+  ListItemButton,
+} from '@mui/material';
 
 interface Props {}
 
 const Header: React.FC<Props> = () => {
-  const { isLoggedIn, account, logout } = useAuth()
-  const { setCurrentModal } = useModalStore()
+  const { isLoggedIn, account, logout } = useAuth();
+  const { setCurrentModal } = useModalStore();
 
-  const [anchorEl, setAnchorEl] = useState<(EventTarget & HTMLButtonElement) | null>(null)
-  const [popover, setPopover] = useState(false)
+  const [anchorEl, setAnchorEl] = useState<(EventTarget & HTMLButtonElement) | null>(null);
+  const [popover, setPopover] = useState(false);
 
   const openPopover: MouseEventHandler<HTMLButtonElement> = (e) => {
-    setPopover(true)
-    setAnchorEl(e.currentTarget)
-  }
+    setPopover(true);
+    setAnchorEl(e.currentTarget);
+  };
 
   const closePopover = () => {
-    setPopover(false)
-    setAnchorEl(null)
-  }
+    setPopover(false);
+    setAnchorEl(null);
+  };
 
   const clickLogin = () => {
-    setCurrentModal('LOGIN')
-    closePopover()
-  }
+    setCurrentModal('LOGIN');
+    closePopover();
+  };
 
   const clickRegister = () => {
-    setCurrentModal('REGISTER')
-    closePopover()
-  }
+    setCurrentModal('REGISTER');
+    closePopover();
+  };
 
   return (
-    <AppBar className='header' position='static'>
-      <h1>Web App</h1>
+    <AppBar className="header" position="static">
+      <h1 className="text-red-500">Book Local</h1>
 
       <IconButton onClick={openPopover}>
         <OnlineIndicator online={isLoggedIn}>
@@ -51,7 +59,9 @@ const Header: React.FC<Props> = () => {
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <List style={{ minWidth: '100px' }}>
-          <ListSubheader style={{ textAlign: 'center' }}>Hello, {account?.username || 'Guest'}</ListSubheader>
+          <ListSubheader style={{ textAlign: 'center' }}>
+            Hello, {account?.username || 'Guest'}
+          </ListSubheader>
 
           {isLoggedIn ? (
             <ListItemButton onClick={logout}>Logout</ListItemButton>
@@ -64,7 +74,7 @@ const Header: React.FC<Props> = () => {
         </List>
       </Popover>
     </AppBar>
-  )
-}
+  );
+};
 
-export default Header
+export default Header;
