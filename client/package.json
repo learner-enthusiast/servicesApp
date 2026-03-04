@@ -31,6 +31,7 @@
     "@mui/icons-material": "^6.5.0",
     "@mui/material": "^6.4.8",
     "axios": "^1.13.1",
+    "lodash.debounce": "^4.0.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.13.1",
@@ -39,6 +40,7 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@types/lodash.debounce": "^4.0.9",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "autoprefixer": "^10.4.27",

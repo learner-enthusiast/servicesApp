@@ -60,9 +60,11 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   };
 
   const login = (formData: FormData) => {
+    const { username, password } = formData;
+
     return new Promise((resolve, reject) => {
       axios
-        .post('/auth/login', formData)
+        .post('/auth/login', { username, password })
         .then(({ data: { data: accountData, token: accessToken } }) => {
           setAccount(accountData);
           setToken(accessToken);

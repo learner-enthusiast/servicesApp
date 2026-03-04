@@ -1,6 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 :root {
   --online: #44b700;
   --offline: #b74400;

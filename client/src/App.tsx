@@ -6,7 +6,6 @@ import AuthModal from 'components/AuthModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import 'styles/ReactWelcome.css';
 import Dashboard from 'pages/Dashboard';
-import Admin from 'pages/Admin';
 
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
@@ -20,6 +19,7 @@ import ListAltIcon from '@mui/icons-material/ListAlt';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
+import IndividualListingPage from 'pages/IndividualListingPage';
 
 // Pages (create these as needed)
 
@@ -36,11 +36,7 @@ const App = () => {
           {/* Protected - any authenticated user */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
-          </Route>
-
-          {/* Protected - admin only */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/listing/:id" element={<IndividualListingPage />} />
           </Route>
         </Routes>
       </div>
