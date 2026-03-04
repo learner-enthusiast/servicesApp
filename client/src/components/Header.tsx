@@ -43,7 +43,7 @@ const Header: React.FC<Props> = () => {
 
   return (
     <AppBar className="header" position="static">
-      <h1 className="text-red-500">Book Local</h1>
+      <h1 className="text-blue-500 text-2xl font-bold">BookLocal</h1>
 
       <IconButton onClick={openPopover}>
         <OnlineIndicator online={isLoggedIn}>
