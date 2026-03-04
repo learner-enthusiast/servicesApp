@@ -1,8 +1,6 @@
 import { RequestHandler } from 'express';
 import axios from 'axios';
-import { MAPBOX_ACCESS_TOKEN } from '../constants';
-
-const MAPBOX_BASE_URL = 'https://api.mapbox.com';
+import { MAPBOX_ACCESS_TOKEN, MAPBOX_BASE_URL } from '../constants';
 
 // Get place suggestions as user types (autocomplete)
 export const getPlaceSuggestions: RequestHandler = async (req, res, next) => {
