@@ -10,6 +10,8 @@ import {
   getBookingsByCustomerId,
   approveBooking,
   uploadBookingPhotos,
+  getBookingsByServiceProviderId,
+  approveReschedule,
 } from '../controllers/booking';
 import checkBearerToken from '../middlewares/check-bearer-token';
 import checkRole from '../middlewares/check-roles';
@@ -29,7 +31,7 @@ router.get('/my-bookings', getBookingsByCustomerId);
 
 // Get bookings by listing ID
 router.get('/listing/:listingId', getBookingsByListingId);
-
+router.get('/bookingsservice_provider', getBookingsByServiceProviderId);
 // Get a single booking by ID
 router.get('/:id', getBookingById);
 
@@ -49,6 +51,7 @@ router.patch('/:id/status', updateBookingStatus);
 
 // Reschedule a booking (customer only)
 router.patch('/:id/reschedule', rescheduleBooking);
+router.patch('/:id/rescheduleApprove', approveReschedule);
 
 // Cancel a booking (customer, listing owner, or admin)
 router.patch('/:id/cancel', cancelBooking);

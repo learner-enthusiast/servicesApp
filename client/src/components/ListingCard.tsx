@@ -11,12 +11,13 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { ListingStatusEnum } from 'utils/enum';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   listing: any;
   distanceInMeters?: number;
   showToggle?: boolean;
-  onToggle?: (id: string, status: boolean) => void;
+  onToggle?: (id: string, status: any) => void;
   togglingId?: string | null;
 }
 
@@ -27,62 +28,128 @@ const ListingCard: React.FC<Props> = ({
   onToggle,
   togglingId,
 }) => {
+  const navigate = useNavigate();
+
   return (
-    <Card sx={{ display: 'flex', alignItems: 'center', p: 2 }}>
-      {/* Image */}
-      {listing.photos?.[0]?.url && (
-        <CardMedia
-          component="img"
-          image={listing.photos[0].url}
-          sx={{
-            width: 120,
-            height: 120,
-            borderRadius: 2,
-            objectFit: 'cover',
-            mr: 2,
-          }}
-        />
-      )}
+    <Card
+      elevation={0}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        p: { xs: 1.5, sm: 2 },
+        border: '1px solid #E0E0E0',
+        borderRadius: '8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+        gap: 2,
+      }}
+    >
+      {/* Clickable area */}
+      <Box
+        onClick={() => navigate(`/listing/${listing._id}`)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 2,
+          flex: 1,
+          minWidth: 0,
+          cursor: 'pointer',
+        }}
+      >
+        {listing.photos?.[0]?.url && (
+          <CardMedia
+            component="img"
+            image={listing.photos[0].url}
+            sx={{
+              width: { xs: 80, sm: 120 },
+              height: { xs: 80, sm: 120 },
+              borderRadius: '8px',
+              objectFit: 'cover',
+              flexShrink: 0,
+            }}
+          />
+        )}
 
-      {/* Content */}
-      <Box sx={{ flexGrow: 1 }}>
-        <CardContent sx={{ p: 0 }}>
-          <Typography variant="h6">{listing.name}</Typography>
+        <Box sx={{ minWidth: 0 }}>
+          <CardContent sx={{ p: '0 !important' }}>
+            <Typography
+              sx={{
+                fontWeight: 600,
+                fontSize: { xs: 14, sm: 16 },
+                color: '#0F0F0F',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {listing.name}
+            </Typography>
 
-          <Typography variant="body2" color="text.secondary">
-            {listing.description}
-          </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: '#6B6B6B',
+                fontSize: { xs: 12, sm: 13 },
+                mt: 0.5,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
+            >
+              {listing.description}
+            </Typography>
 
-          <Typography variant="subtitle1" sx={{ mt: 1, fontWeight: 600 }}>
-            ₹{listing.price}
-          </Typography>
+            <Typography
+              sx={{ mt: 1, fontWeight: 600, fontSize: { xs: 13, sm: 15 }, color: '#0F0F0F' }}
+            >
+              ₹{listing.price?.toLocaleString('en-IN')}
+            </Typography>
 
-          {/* Customer Distance */}
-          {distanceInMeters !== undefined && (
-            <Chip
-              label={`${distanceInMeters} meters away`}
-              color="primary"
-              size="small"
-              sx={{ mt: 1 }}
-            />
-          )}
-        </CardContent>
+            {distanceInMeters !== undefined && (
+              <Chip
+                label={`${distanceInMeters}m away`}
+                size="small"
+                sx={{
+                  mt: 1,
+                  backgroundColor: '#EFF6FF',
+                  color: '#1D6FF2',
+                  fontWeight: 500,
+                  fontSize: 11,
+                  border: 'none',
+                }}
+              />
+            )}
+          </CardContent>
+        </Box>
       </Box>
 
-      {/* Admin Toggle */}
+      {/* Toggle — stopPropagation so it doesn't trigger navigate */}
       {showToggle && (
-        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          {togglingId === listing._id && <CircularProgress size={16} />}
-
+        <Box
+          onClick={(e) => e.stopPropagation()}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}
+        >
+          {togglingId === listing._id && <CircularProgress size={16} sx={{ color: '#1D6FF2' }} />}
           <FormControlLabel
             control={
               <Switch
                 checked={listing.status === ListingStatusEnum.ACTIVE}
                 disabled={togglingId === listing._id}
                 onChange={() => onToggle?.(listing._id, listing.status)}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': { color: '#1D6FF2' },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#1D6FF2',
+                  },
+                }}
               />
             }
-            label={listing.status ? 'Active' : 'Inactive'}
+            label={
+              <Typography sx={{ fontSize: { xs: 11, sm: 13 }, color: '#6B6B6B' }}>
+                {listing.status === 'ACTIVE' ? 'Active' : 'Inactive'}
+              </Typography>
+            }
           />
         </Box>
       )}

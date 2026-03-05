@@ -14,16 +14,16 @@ import checkUserType from '../middlewares/check-userType';
 const router = Router();
 router.use(checkBearerToken);
 // Get all reviews
-router.get('/', checkRole('admin'), getAllReviews);
+router.get('/', checkRole('ADMIN'), getAllReviews);
 
 // Get a single review by ID
 router.get('/:id', getReviewById);
 
 // Create a new review (user only)
-router.post('/', checkRole('user'), checkUserType('CUSTOMER'), createReview);
+router.post('/', checkRole('USER'), checkUserType('CUSTOMER'), createReview);
 
 // Update a review (user only)
-router.put('/:id', checkRole('user'), checkUserType('CUSTOMER'), updateReview);
+router.put('/:id', checkRole('USER'), checkUserType('CUSTOMER'), updateReview);
 
 // Delete a review (user only)
 router.delete('/:id', deleteReview);

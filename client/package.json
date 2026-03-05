@@ -32,11 +32,12 @@
     "@mui/material": "^6.4.8",
     "axios": "^1.13.1",
     "lodash.debounce": "^4.0.8",
+    "lucide-react": "^0.577.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.13.1",
     "react-scripts": "5.0.1",
-    "typescript": "^5.9.3",
+    "typescript": "^4.9.5",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

@@ -9,6 +9,7 @@ import bookingRoutes from './routes/bookings';
 import listingRoutes from './routes/listings';
 import reviewRoutes from './routes/reviews';
 import locationRoutes from './routes/location';
+import aiRoutes from './routes/ai';
 const bootstrap = async () => {
   await mongo.connect();
   app.get('/', (req, res) => {
@@ -24,6 +25,7 @@ const bootstrap = async () => {
   app.use('/listing', listingRoutes);
   app.use('/review', reviewRoutes);
   app.use('/location', locationRoutes);
+  app.use('/api/ai', aiRoutes);
   // add rest of routes here...
 
   app.listen(PORT, () => {

@@ -179,3 +179,107 @@ export const createBooking = async (body: { listingId: string; scheduledDate: st
     throw error?.response?.data?.message || error.message;
   }
 };
+
+export const getUserMyBookings = async (query: any) => {
+  try {
+    const { data } = await api.get('/booking/my-bookings', { params: { query } });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+export const cancelBooking = async (id: String) => {
+  try {
+    const { data } = await api.patch(`/booking/${id}/cancel`);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+export const approveBooking = async (id: String) => {
+  try {
+    const { data } = await api.post(`/booking/${id}/approve`);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const approveRescheduleBooking = async (id: String) => {
+  try {
+    const { data } = await api.patch(`/booking/${id}/rescheduleApprove`);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+interface RescheduleBookingParams {
+  scheduledDate: string;
+}
+
+export const rescheduleBooking = async (id: string, params: RescheduleBookingParams) => {
+  try {
+    const { data } = await api.patch(`/booking/${id}/reschedule`, params);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+export const getService_ProviderMyBookings = async (query: any) => {
+  try {
+    const { data } = await api.get('/booking/bookingsservice_provider', { params: { query } });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const getBookingById = async (id: string | undefined) => {
+  try {
+    const { data } = await api.get(`/booking/${id}`);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const uploadBookingPhotos = async (
+  id: string | undefined,
+  beforePhotos?: File[],
+  afterPhotos?: File[]
+) => {
+  const formData = new FormData();
+
+  beforePhotos?.forEach((file) => {
+    formData.append('beforePhotos', file);
+  });
+
+  afterPhotos?.forEach((file) => {
+    formData.append('afterPhotos', file);
+  });
+
+  const { data } = await api.post(`/booking/${id}/photos`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+  return data;
+};
+export const updateBookingStatus = async (id: String | undefined, status: String) => {
+  try {
+    const { data } = await api.patch(`/booking/${id}/status`, { status });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};

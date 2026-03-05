@@ -13,7 +13,9 @@ import {
 } from '@mui/material';
 import { UserRoleEnum, UserTypeEnum } from 'utils/enum';
 import { Tabs, Tab } from '@mui/material';
-import { useNavigationStore } from 'store/useNavigationStore';
+import { TabType, useNavigationStore } from 'store/useNavigationStore';
+import { useLocation, useNavigate } from 'react-router-dom';
+
 interface Props {}
 
 const Header: React.FC<Props> = () => {
@@ -22,6 +24,15 @@ const Header: React.FC<Props> = () => {
   const { currentTab, setCurrentTab } = useNavigationStore();
   const [anchorEl, setAnchorEl] = useState<(EventTarget & HTMLButtonElement) | null>(null);
   const [popover, setPopover] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleTabChange = (_: React.SyntheticEvent, value: TabType) => {
+    setCurrentTab(value);
+    if (location.pathname !== '/dashboard') {
+      navigate('/dashboard');
+    }
+  };
 
   const openPopover: MouseEventHandler<HTMLButtonElement> = (e) => {
     setPopover(true);
@@ -56,13 +67,14 @@ const Header: React.FC<Props> = () => {
         justifyContent: 'space-between',
         px: 2,
       }}
+      className="bg-white text-black"
     >
       <h1 className="text-blue-500 text-2xl font-bold">BookLocal</h1>
 
       {isCustomer && (
         <Tabs
           value={currentTab}
-          onChange={(_, value) => setCurrentTab(value)}
+          onChange={handleTabChange}
           textColor="inherit"
           indicatorColor="secondary"
         >
@@ -73,19 +85,19 @@ const Header: React.FC<Props> = () => {
       {isServiceProvider && (
         <Tabs
           value={currentTab}
-          onChange={(_, value) => setCurrentTab(value)}
+          onChange={handleTabChange}
           textColor="inherit"
           indicatorColor="secondary"
         >
-          <Tab label="Jobs" value="JOBS" />
           <Tab label="Edit Listings" value="EDIT_LISTINGS" />
           <Tab label="Create Listings" value="CREATE_LISTINGS" />
+          <Tab label="My Bookings" value="MY_BOOKINGS" />
         </Tabs>
       )}
       {isAdmin && (
         <Tabs
           value={currentTab}
-          onChange={(_, value) => setCurrentTab(value)}
+          onChange={handleTabChange}
           textColor="inherit"
           indicatorColor="secondary"
         >

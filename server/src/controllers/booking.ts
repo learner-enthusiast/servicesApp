@@ -88,7 +88,7 @@ export const updateBookingStatus: RequestHandler = async (req, res, next) => {
       return next({ statusCode: 404, message: 'Listing not found' });
     }
 
-    const isListingOwner = listing.userId.toString() === req.auth?._id.toString();
+    const isListingOwner = listing.userId.toString() === req.auth?.uid.toString();
     const isAdmin = req.auth?.role === 'admin';
 
     if (!isListingOwner && !isAdmin) {
@@ -123,7 +123,7 @@ export const rescheduleBooking: RequestHandler = async (req, res, next) => {
     }
 
     if (
-      booking.customerId.toString() !== req.auth?._id.toString() &&
+      booking.customerId.toString() !== req.auth?.uid.toString() &&
       !(req?.auth?.role === 'admin')
     ) {
       return next({ statusCode: 403, message: 'Only the customer can reschedule this booking' });
@@ -179,8 +179,8 @@ export const cancelBooking: RequestHandler = async (req, res, next) => {
     }
 
     const listing = await Listing.findById(booking.listingId);
-    const isCustomer = booking.customerId.toString() === req.auth?._id.toString();
-    const isListingOwner = listing?.userId.toString() === req.auth?._id.toString();
+    const isCustomer = booking.customerId.toString() === req.auth?.uid.toString();
+    const isListingOwner = listing?.userId.toString() === req.auth?.uid.toString();
     const isAdmin = req.auth?.role === 'admin';
 
     if (!isCustomer && !isListingOwner && !isAdmin) {
@@ -217,14 +217,28 @@ export const getBookingsByListingId: RequestHandler = async (req, res, next) => 
 // Get all bookings by customer ID
 export const getBookingsByCustomerId: RequestHandler = async (req, res, next) => {
   try {
-    const customerId = req.auth?._id;
-
+    const customerId = req.auth?.uid;
     if (!customerId) {
       return next({ statusCode: 401, message: 'Unauthorized' });
     }
 
-    const bookings = await Booking.find({ customerId });
-    res.status(200).json({ message: 'Bookings fetched', data: bookings });
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      Booking.find({ customerId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Booking.countDocuments({ customerId }),
+    ]);
+
+    res.status(200).json({
+      message: 'Bookings fetched',
+      count: bookings.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: bookings,
+    });
   } catch (error) {
     next(error);
   }
@@ -248,8 +262,8 @@ export const approveReschedule: RequestHandler = async (req, res, next) => {
       return next({ statusCode: 404, message: 'Listing not found' });
     }
 
-    const isListingOwner = listing.userId.toString() === req.auth?._id.toString();
-    const isAdmin = req.auth?.role === 'admin';
+    const isListingOwner = listing.userId.toString() === req.auth?.uid.toString();
+    const isAdmin = req.auth?.role === 'ADMIN';
 
     if (!isListingOwner && !isAdmin) {
       return next({
@@ -274,7 +288,7 @@ export const approveBooking: RequestHandler = async (req, res, next) => {
     if (!booking) return next({ statusCode: 404, message: 'Booking not found' });
 
     const listing = await Listing.findById(booking.listingId);
-    const isOwner = listing?.userId.toString() === req.auth?._id.toString();
+    const isOwner = listing?.userId.toString() === req.auth?.uid.toString();
     const isAdmin = req.auth?.role === UserRoleEnum.ADMIN;
     if (!isOwner && !isAdmin) {
       return next({ statusCode: 403, message: 'Unauthorized' });
@@ -295,7 +309,7 @@ export const uploadBookingPhotos: RequestHandler = async (req, res, next) => {
     if (!booking) return next({ statusCode: 404, message: 'Booking not found' });
 
     const listing = await Listing.findById(booking.listingId);
-    const isBookingUser = booking.customerId.toString() === req.auth?._id.toString();
+    const isBookingUser = booking.customerId.toString() === req.auth?.uid.toString();
     if (!isBookingUser) {
       return next({ statusCode: 403, message: 'Unauthorized' });
     }
@@ -316,6 +330,43 @@ export const uploadBookingPhotos: RequestHandler = async (req, res, next) => {
     await booking.save();
 
     res.status(200).json({ message: 'Photos uploaded', data: booking });
+  } catch (error) {
+    next(error);
+  }
+};
+export const getBookingsByServiceProviderId: RequestHandler = async (req, res, next) => {
+  try {
+    const serviceProviderId = req.auth?.uid;
+    if (!serviceProviderId) {
+      return next({ statusCode: 401, message: 'Unauthorized' });
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+
+    // Find all listings owned by this service provider
+    const listings = await Listing.find({ userId: serviceProviderId }).select('_id');
+    const listingIds = listings.map((l) => l._id);
+
+    const [bookings, total] = await Promise.all([
+      Booking.find({ listingId: { $in: listingIds } })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('listingId')
+        .populate('customerId'),
+      Booking.countDocuments({ listingId: { $in: listingIds } }),
+    ]);
+
+    res.status(200).json({
+      message: 'Bookings fetched',
+      count: bookings.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: bookings,
+    });
   } catch (error) {
     next(error);
   }

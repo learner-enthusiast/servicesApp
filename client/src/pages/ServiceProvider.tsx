@@ -1,5 +1,6 @@
 import CreateListingForm from 'components/CreateListingForm';
 import MyListings from 'components/MyListings';
+import UserMyBookings from 'components/UserMyBookings';
 import React from 'react';
 import { NavigationTabEnum } from 'utils/enum';
 
@@ -15,7 +16,8 @@ const ServiceProvider = ({ currentTab }: any) => {
         <>
           <MyListings />
         </>
-      )}
+      )}{' '}
+      {currentTab === NavigationTabEnum.MY_BOOKINGS && <UserMyBookings />}
     </div>
   );
 };

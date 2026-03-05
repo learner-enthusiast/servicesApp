@@ -4,13 +4,17 @@ import { getListings } from 'utils/api';
 import { NavigationTabEnum } from 'utils/enum';
 import { Grid } from '@mui/material';
 import ListingCard from 'components/ListingCard';
-import { useNavigate } from 'react-router-dom';
+
+import UserMyBookings from 'components/UserMyBookings';
+import Loading from 'components/Loading';
 
 const Customer = ({ currentTab }: any) => {
   const [listings, setListings] = useState<any[]>([]);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState<boolean>(false);
+
   const handleSearch = async (filters: any) => {
     try {
+      setLoading(true);
       const response = await getListings(filters);
 
       const sortedListings = response.data.sort(
@@ -20,6 +24,8 @@ const Customer = ({ currentTab }: any) => {
       setListings(sortedListings);
     } catch (error) {
       console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -28,23 +34,22 @@ const Customer = ({ currentTab }: any) => {
       {currentTab === NavigationTabEnum.SEARCH && (
         <>
           <ListingsSearchBar onSearch={handleSearch} />
-
-          <Grid container spacing={2} mt={2}>
-            {listings.map((listing) => (
-              <Grid item xs={12} key={listing._id}>
-                <div
-                  onClick={() => {
-                    navigate(`/listing/${listing._id}`);
-                  }}
-                >
-                  <ListingCard listing={listing} distanceInMeters={listing.distanceInMeters} />
-                </div>{' '}
-              </Grid>
-            ))}
-          </Grid>
+          {loading ? (
+            <Loading />
+          ) : (
+            <Grid container spacing={2} mt={2}>
+              {listings.map((listing) => (
+                <Grid item xs={12} key={listing._id}>
+                  <div>
+                    <ListingCard listing={listing} distanceInMeters={listing.distanceInMeters} />
+                  </div>{' '}
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </>
       )}
-      {currentTab === NavigationTabEnum.MY_BOOKINGS && <></>}
+      {currentTab === NavigationTabEnum.MY_BOOKINGS && <UserMyBookings />}
     </div>
   );
 };

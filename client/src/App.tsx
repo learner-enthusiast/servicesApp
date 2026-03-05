@@ -20,6 +20,7 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import IndividualListingPage from 'pages/IndividualListingPage';
+import IndividualBookingPage from 'pages/IndividualBookingPage';
 
 // Pages (create these as needed)
 
@@ -37,6 +38,7 @@ const App = () => {
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/listing/:id" element={<IndividualListingPage />} />
+            <Route path="/booking/:id" element={<IndividualBookingPage />} />
           </Route>
         </Routes>
       </div>

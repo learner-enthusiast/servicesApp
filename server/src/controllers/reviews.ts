@@ -7,7 +7,7 @@ import { BookingStatusEnum } from '../utils/enums';
 export const createReview: RequestHandler = async (req, res, next) => {
   try {
     const { bookingId, description, star } = req.body;
-    const userId = req.auth?._id;
+    const userId = req.auth?.uid;
 
     if (!userId) {
       return next({ statusCode: 401, message: 'Unauthorized' });
@@ -98,7 +98,7 @@ export const updateReview: RequestHandler = async (req, res, next) => {
       return next({ statusCode: 404, message: 'Review not found' });
     }
 
-    if (review.userId.toString() !== req.auth?._id.toString()) {
+    if (review.userId.toString() !== req.auth?.uid.toString()) {
       return next({ statusCode: 403, message: 'You can only update your own reviews' });
     }
 
@@ -152,7 +152,7 @@ export const deleteReview: RequestHandler = async (req, res, next) => {
       return next({ statusCode: 404, message: 'Review not found' });
     }
 
-    const isOwner = review.userId.toString() === req.auth?._id.toString();
+    const isOwner = review.userId.toString() === req.auth?.uid.toString();
     const isAdmin = req.auth?.role === 'admin';
 
     if (!isOwner && !isAdmin) {
