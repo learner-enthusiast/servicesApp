@@ -61,7 +61,7 @@ const MyListings = () => {
   return (
     <div>
       {myListings.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-lg bg-white shadow-sm">
+        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-lg  shadow-sm">
           <svg
             className="w-10 h-10 text-gray-300 mb-3"
             fill="none"

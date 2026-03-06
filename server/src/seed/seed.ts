@@ -1,546 +1,427 @@
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
-import path from 'path';
-
-// Load env from server root
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-
 import Account from '../models/Account';
+import Review from '../models/Review';
 import Listing from '../models/Listings';
 import Booking from '../models/Bookings';
-import Review from '../models/Review';
+import dotenv from 'dotenv';
+dotenv.config();
+
 import {
   BookingStatusEnum,
-  DeletionRequestEnum,
   ListingStatusEnum,
+  PaymentStatusEnum,
   ServiceTypeEnum,
+  UserRoleEnum,
   UserTypeEnum,
 } from '../utils/enums';
 
-// ─── Helper ────────────────────────────────────────────────────────────────────
-function randomInt(min: number, max: number) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-function randomEl<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-function futureDate(daysFromNow: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  return d;
-}
-function pastDate(daysAgo: number) {
+const MONGO_URI = process.env.MONGODB_URI!;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const hash = (pw: string) => bcrypt.hash(pw, 10);
+const randomBetween = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+const pickRandom = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const pastDate = (daysAgo: number) => {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
   return d;
-}
+};
+const futureDate = (daysAhead: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  return d;
+};
 
-// ─── Raw Seed Data ─────────────────────────────────────────────────────────────
-const PASSWORD = 'Password@123';
+// ─── Accounts ─────────────────────────────────────────────────────────────────
 
-const usersData = [
-  // Admins
-  { name: 'Admin One', email: 'admin1@example.com', role: 'admin' },
-  { name: 'Admin Two', email: 'admin2@example.com', role: 'admin' },
-  // Service Provider
-  {
-    name: 'Alice Service_provider',
-    email: 'alice@example.com',
-    type: UserTypeEnum.SERVICE_PROVIDER,
-    role: 'user',
-  },
-  {
-    name: 'Bob Service_provider',
-    email: 'bob@example.com',
-    type: UserTypeEnum.SERVICE_PROVIDER,
-    role: 'user',
-  },
-  {
-    name: 'Charlie Service_provider',
-    email: 'charlie@example.com',
-    type: UserTypeEnum.SERVICE_PROVIDER,
-    role: 'user',
-  },
-  {
-    name: 'Diana Service_provider',
-    email: 'diana@example.com',
-    type: UserTypeEnum.SERVICE_PROVIDER,
-    role: 'user',
-  },
-  // Customers
-  { name: 'Eve Customer', email: 'eve@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Frank Customer', email: 'frank@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Grace Customer', email: 'grace@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Hank Customer', email: 'hank@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Ivy Customer', email: 'ivy@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Jack Customer', email: 'jack@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Karen Customer', email: 'karen@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Leo Customer', email: 'leo@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Mona Customer', email: 'mona@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Nick Customer', email: 'nick@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  {
-    name: 'Olivia Customer',
-    email: 'olivia@example.com',
-    type: UserTypeEnum.CUSTOMER,
-    role: 'user',
-  },
-  { name: 'Paul Customer', email: 'paul@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Quinn Customer', email: 'quinn@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
-  { name: 'Rita Customer', email: 'rita@example.com', type: UserTypeEnum.CUSTOMER, role: 'user' },
+const SERVICE_PROVIDERS = [
+  'ravi_movers',
+  'priya_cleaners',
+  'suresh_electrician',
+  'anita_plumber',
+  'deepak_parking',
+  'mohan_carwash',
+  'sunita_cleaning',
+  'rajesh_electrician',
+  'kavita_plumber',
+  'arun_movers',
 ];
 
-import { Types } from 'mongoose';
-
-export const listingsData = [
-  {
-    name: 'Expert Plumbing Services',
-    description: 'Professional plumbing solutions for leak repairs, installations and maintenance.',
-    serviceType: ServiceTypeEnum.PLUMBING,
-    price: 499,
-    geoLocation: { type: 'Point', coordinates: [88.3639, 22.5726] },
-    photos: [{ url: 'https://picsum.photos/seed/plumbing1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  {
-    name: 'AC Installation & Repair',
-    description: 'Complete AC servicing including gas refill, installation and deep cleaning.',
-    serviceType: ServiceTypeEnum.AC_SERVICE,
-    price: 899,
-    geoLocation: { type: 'Point', coordinates: [88.4089, 22.6298] },
-    photos: [
-      { url: 'https://picsum.photos/seed/ac1/800/600', isPrimary: true },
-      { url: 'https://picsum.photos/seed/ac2/800/600', isPrimary: false },
-    ],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  {
-    name: 'Home Cleaning Services',
-    description: 'Deep home cleaning for kitchen, bathroom and full apartment sanitization.',
-    serviceType: ServiceTypeEnum.CLEANING,
-    price: 1299,
-    geoLocation: { type: 'Point', coordinates: [88.34, 22.5448] },
-    photos: [{ url: 'https://picsum.photos/seed/cleaning1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  {
-    name: 'Professional Wedding Photography',
-    description: 'Capture your special moments with cinematic wedding photography.',
-    serviceType: ServiceTypeEnum.PHOTOGRAPHY,
-    price: 25000,
-    geoLocation: { type: 'Point', coordinates: [88.3639, 22.5726] },
-    photos: [
-      { url: 'https://picsum.photos/seed/photo1/800/600', isPrimary: true },
-      { url: 'https://picsum.photos/seed/photo2/800/600', isPrimary: false },
-    ],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  {
-    name: 'Certified Home Tutor (Maths & Science)',
-    description: 'Experienced tutor for classes 6–12, CBSE & ICSE boards.',
-    serviceType: ServiceTypeEnum.HOME_TUTOR,
-    price: 600,
-    geoLocation: { type: 'Point', coordinates: [88.37, 22.56] },
-    photos: [{ url: 'https://picsum.photos/seed/tutor1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 6
-  {
-    name: 'Electrical Wiring & Repair',
-    description: 'Certified electrician for wiring, switchboard repair and installations.',
-    serviceType: ServiceTypeEnum.ELECTRICAL,
-    price: 699,
-    geoLocation: { type: 'Point', coordinates: [88.355, 22.58] },
-    photos: [{ url: 'https://picsum.photos/seed/electric1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 7
-  {
-    name: "Men's Salon at Home",
-    description: 'Haircut, beard styling and grooming services at your doorstep.',
-    serviceType: ServiceTypeEnum.MENS_SALON,
-    price: 299,
-    geoLocation: { type: 'Point', coordinates: [88.39, 22.6] },
-    photos: [{ url: 'https://picsum.photos/seed/salon1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 8
-  {
-    name: "Women's Salon & Bridal Makeup",
-    description: 'Professional bridal and party makeup with hairstyling.',
-    serviceType: ServiceTypeEnum.WOMENS_SALON,
-    price: 3500,
-    geoLocation: { type: 'Point', coordinates: [88.41, 22.59] },
-    photos: [{ url: 'https://picsum.photos/seed/womens1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 9
-  {
-    name: 'Car Washing & Detailing',
-    description: 'Complete car washing and interior detailing at home.',
-    serviceType: ServiceTypeEnum.CAR_WASHING,
-    price: 499,
-    geoLocation: { type: 'Point', coordinates: [88.365, 22.61] },
-    photos: [{ url: 'https://picsum.photos/seed/car1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 10
-  {
-    name: 'Packers and Movers Service',
-    description: 'Safe and secure home shifting services with insurance coverage.',
-    serviceType: ServiceTypeEnum.PACKERS_AND_MOVERS,
-    price: 4500,
-    geoLocation: { type: 'Point', coordinates: [88.33, 22.57] },
-    photos: [{ url: 'https://picsum.photos/seed/movers1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 11
-  {
-    name: 'Interior Design Consultation',
-    description: 'Modern interior design solutions for home and office.',
-    serviceType: ServiceTypeEnum.INTERIOR_DESIGN,
-    price: 5000,
-    geoLocation: { type: 'Point', coordinates: [88.375, 22.585] },
-    photos: [{ url: 'https://picsum.photos/seed/interior1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 12
-  {
-    name: 'Pest Control Services',
-    description: 'Termite and cockroach control with eco-safe chemicals.',
-    serviceType: ServiceTypeEnum.PEST_CONTROL,
-    price: 1199,
-    geoLocation: { type: 'Point', coordinates: [88.345, 22.595] },
-    photos: [{ url: 'https://picsum.photos/seed/pest1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 13
-  {
-    name: 'Physiotherapy at Home',
-    description: 'Certified physiotherapist for pain relief and post-surgery recovery.',
-    serviceType: ServiceTypeEnum.PHYSIOTHERAPY,
-    price: 800,
-    geoLocation: { type: 'Point', coordinates: [88.36, 22.555] },
-    photos: [{ url: 'https://picsum.photos/seed/physio1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 14
-  {
-    name: 'DJ & Sound Setup',
-    description: 'Complete DJ and sound system setup for parties and weddings.',
-    serviceType: ServiceTypeEnum.DJ_SOUND,
-    price: 7000,
-    geoLocation: { type: 'Point', coordinates: [88.395, 22.575] },
-    photos: [{ url: 'https://picsum.photos/seed/dj1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
-
-  // 15
-  {
-    name: 'Waterproofing & Terrace Repair',
-    description: 'Professional terrace waterproofing with 5-year warranty.',
-    serviceType: ServiceTypeEnum.WATERPROOFING,
-    price: 10000,
-    geoLocation: { type: 'Point', coordinates: [88.38, 22.565] },
-    photos: [{ url: 'https://picsum.photos/seed/waterproof1/800/600', isPrimary: true }],
-    status: ListingStatusEnum.ACTIVE,
-    userId: new Types.ObjectId(),
-    deletionRequest: { status: DeletionRequestEnum.NONE },
-  },
+const CUSTOMERS = [
+  'customer_arjun',
+  'customer_meena',
+  'customer_rohit',
+  'customer_sita',
+  'customer_vijay',
+  'customer_pooja',
+  'customer_nikhil',
+  'customer_divya',
+  'customer_suresh',
+  'customer_ananya',
 ];
 
-const reviewDescriptions = [
-  'Absolutely wonderful stay! Everything was clean and the host was very responsive.',
-  'Great location, but the WiFi was a bit spotty. Would still recommend.',
-  'One of the best vacations I have ever had. The views were incredible!',
-  'Decent place for the price. Nothing fancy but gets the job done.',
-  'The photos do not do it justice — even more beautiful in person.',
-  'Had a small issue with check-in but the host resolved it quickly.',
-  'Perfect for a weekend getaway. Very peaceful and relaxing.',
-  'The kitchen was fully stocked which was a huge plus for us.',
-  'A bit noisy at night due to the road nearby, but otherwise great.',
-  'We will definitely be back! Our kids loved the pool.',
-  'Exceeded expectations in every way. Five stars across the board.',
-  'Good value for money. Clean, comfortable, and well-maintained.',
-  'The host went above and beyond to make us feel welcome.',
-  'Location was perfect — walking distance to everything we needed.',
-  'Lovely space with great natural light. Highly recommend for couples.',
-  'Could use some minor repairs but overall a pleasant stay.',
-  'Amazing sunset views from the terrace. Truly unforgettable.',
-  'Felt like home away from home. Will recommend to all my friends.',
-  'The amenities listed were all accurate. No surprises — in a good way.',
-  'Comfortable beds, hot water, great coffee — what more do you need?',
-  'Not the cleanest place I have stayed at. Room for improvement.',
-  'Fantastic for remote work. The desk setup and internet were solid.',
-  'We hosted a small gathering here and it was perfect for that.',
-  'Quiet neighbourhood, friendly locals, and a beautiful property.',
-  'The host provided a really helpful local guide. Nice touch!',
+// ─── Listings ─────────────────────────────────────────────────────────────────
+// [name, description, serviceType, price, [lng, lat], locationLabel]
+
+const LISTINGS_DATA: [string, string, string, number, [number, number]][] = [
+  // Kolkata
+  [
+    'Ravi Packers & Movers',
+    'Professional packing and moving service in Kolkata. Experienced staff handling furniture, fragile items, and full home relocations with care and efficiency.',
+    ServiceTypeEnum.PACKERS_AND_MOVERS,
+    4500,
+    [88.3639, 22.5726], // Kolkata city centre
+  ],
+  [
+    'QuickClean Home Services',
+    'Deep cleaning service covering bathrooms, kitchens, and full apartments in the Salt Lake area. All professional equipment provided.',
+    ServiceTypeEnum.CLEANING,
+    1200,
+    [88.4126, 22.5958], // Salt Lake, Kolkata
+  ],
+  [
+    'Suresh Electrical Works',
+    'Licensed electrician based in Howrah offering wiring, switchboard repairs, inverter installation, and emergency electrical fault resolution.',
+    ServiceTypeEnum.ELECTRICAL,
+    800,
+    [88.3105, 22.5958], // Howrah
+  ],
+  [
+    'Anita Plumbing Solutions',
+    'Pipe repairs, leakage fixing, bathroom fittings, water tank cleaning, and drain unblocking across South Kolkata.',
+    ServiceTypeEnum.PLUMBING,
+    700,
+    [88.3697, 22.5121], // South Kolkata / Behala
+  ],
+  [
+    'Anandamayee Car Parking',
+    'Secure covered car parking near Serampore Railway Station. 24/7 CCTV, monthly and daily passes available.',
+    ServiceTypeEnum.CAR_WASHING,
+    3000,
+    [88.3396, 22.7513], // Serampore
+  ],
+
+  // Serampore & Hooghly district
+  [
+    'SparkFix Electricals – Serampore',
+    'Fan installation, AC servicing, MCB replacement, and full wiring solutions for homes and offices in Serampore and nearby areas.',
+    ServiceTypeEnum.ELECTRICAL,
+    950,
+    [88.3421, 22.7489], // Serampore
+  ],
+  [
+    'FreshHome Deep Cleaning – Chandannagar',
+    'Post-construction cleaning, sofa shampooing, carpet cleaning, and move-in/move-out services in Chandannagar.',
+    ServiceTypeEnum.CLEANING,
+    1800,
+    [88.3676, 22.8677], // Chandannagar
+  ],
+  [
+    'Deepak Safe Parking – Hooghly',
+    'Gated parking lot with full-time attendant near Hooghly Court. Suitable for cars and bikes. Daily, weekly, and monthly passes.',
+    ServiceTypeEnum.CAR_WASHING,
+    1500,
+    [88.3959, 22.9053], // Hooghly
+  ],
+  [
+    'Mohan Express Car Wash – Chinsurah',
+    'Premium hand car wash and interior cleaning service. Mobile van available for doorstep service in Chinsurah and surroundings.',
+    ServiceTypeEnum.CAR_WASHING,
+    600,
+    [88.3892, 22.8896], // Chinsurah
+  ],
+  [
+    'Sunita Home Cleaners – Rishra',
+    'Affordable home cleaning, kitchen deep clean, and bathroom sanitization service for Rishra and Konnagar residents.',
+    ServiceTypeEnum.CLEANING,
+    900,
+    [88.3522, 22.7097], // Rishra
+  ],
+
+  // Kalyani & Nadia
+  [
+    'Rajesh Wiring & Repairs – Kalyani',
+    'All electrical work including full home wiring, meter room fixes, and installation of geysers and fans in Kalyani township.',
+    ServiceTypeEnum.ELECTRICAL,
+    850,
+    [88.4342, 22.9754], // Kalyani
+  ],
+  [
+    'Kavita Pipe & Tap Works – Naihati',
+    'Trusted plumber for overhead tank fitting, pipeline installation, drainage repair, and bathroom renovation in Naihati.',
+    ServiceTypeEnum.PLUMBING,
+    750,
+    [88.4219, 22.8894], // Naihati
+  ],
+  [
+    'Arun Relocation Services – Barrackpore',
+    'Hassle-free household relocation services across North 24 Parganas. Packing, loading, transport, and unpacking included.',
+    ServiceTypeEnum.PACKERS_AND_MOVERS,
+    5200,
+    [88.3718, 22.7622], // Barrackpore
+  ],
+  [
+    'ClearDrain Plumbing – Baranagar',
+    'Emergency drain unblocking, pipe leak sealing, and bathroom fitting services in Baranagar and Belgharia.',
+    ServiceTypeEnum.PLUMBING,
+    680,
+    [88.3785, 22.6439], // Baranagar
+  ],
+  [
+    'TotalMove Packers – Dum Dum',
+    'Local and intercity moving service with GPS-tracked vehicles. Furniture disassembly and reassembly included.',
+    ServiceTypeEnum.PACKERS_AND_MOVERS,
+    3800,
+    [88.4271, 22.6512], // Dum Dum
+  ],
 ];
 
-// ─── Main Seed Function ────────────────────────────────────────────────────────
-async function seed() {
-  const uri = process.env.MONGO_URI || process.env.MONGODB_URI || process.env.DB_URI;
-  if (!uri) {
-    throw new Error(
-      'MongoDB URI not found in environment variables (MONGO_URI / MONGODB_URI / DB_URI)'
-    );
-  }
+// ─── Review Comments ──────────────────────────────────────────────────────────
 
-  await mongoose.connect(uri);
-  console.log('✅ Connected to MongoDB');
+const REVIEW_COMMENTS = [
+  'Excellent service! Very professional and on time.',
+  'Good work overall. Would recommend to others.',
+  'Decent experience. Got the job done without issues.',
+  'Very satisfied. The team was courteous and efficient.',
+  'Quick response and quality work. Will book again.',
+  'Average service. Some delays but work was acceptable.',
+  'Outstanding! Exceeded my expectations completely.',
+  'Reliable and affordable. Happy with the results.',
+  'The crew was hardworking and took good care of our belongings.',
+  'Arrived on time and finished ahead of schedule. Impressed!',
+  'Charged a fair price and did not cut corners. Recommended.',
+  'Had a small issue but it was resolved promptly. Good service.',
+];
 
-  // ── 1. Clear all collections ──────────────────────────────────────────────
-  console.log('🗑️  Clearing existing data...');
+// ─── Seed ─────────────────────────────────────────────────────────────────────
+
+const seed = async () => {
+  await mongoose.connect(MONGO_URI);
+  console.log('✅ Connected to MongoDB\n');
+
   await Promise.all([
-    Review.deleteMany({}),
-    Booking.deleteMany({}),
-    Listing.deleteMany({}),
     Account.deleteMany({}),
+    Listing.deleteMany({}),
+    Booking.deleteMany({}),
+    Review.deleteMany({}),
   ]);
+  console.log('🗑️  Cleared existing data\n');
 
-  // ── 2. Create Accounts ────────────────────────────────────────────────────
-  console.log('👤 Creating accounts...');
-  const hashedPassword = await bcrypt.hash(PASSWORD, 10);
-
-  const accounts = await Account.insertMany(
-    usersData.map((u) => ({
-      name: u.name,
-      email: u.email,
-      password: hashedPassword,
-      role: u.role,
-      ...(u.type && { type: u.type }),
-    }))
-  );
-  console.log(`   → ${accounts.length} accounts created`);
-
-  const admins = accounts.filter((a: any) => a.role === 'admin');
-  const hosts = accounts.filter((a: any) => a.type === UserTypeEnum.SERVICE_PROVIDER);
-  const customers = accounts.filter((a: any) => a.type === UserTypeEnum.CUSTOMER);
-
-  // ── 3. Create Listings (assigned to hosts) ────────────────────────────────
-  console.log('🏠 Creating listings...');
-  const listings = await Listing.insertMany(
-    listingsData.map((l, i) => ({
-      ...l,
-      hostId: hosts[i % hosts.length]._id,
-      ratings: 0,
-      reviewIds: [],
-    }))
-  );
-  console.log(`   → ${listings.length} listings created`);
-
-  // ── 4. Create Bookings ────────────────────────────────────────────────────
-  console.log('📅 Creating bookings...');
-
-  interface BookingDoc {
-    _id: mongoose.Types.ObjectId;
-    customerId: mongoose.Types.ObjectId;
-    listingId: mongoose.Types.ObjectId;
-    status: string;
-    checkIn: Date;
-    checkOut: Date;
-    guests: number;
-    totalPrice: number;
-    reviewId?: mongoose.Types.ObjectId;
-  }
-
-  const bookingsRaw: any[] = [];
-
-  // Give each customer 3–5 bookings across random listings
-  for (const customer of customers) {
-    const numBookings = randomInt(3, 5);
-    const usedListings = new Set<string>();
-
-    for (let b = 0; b < numBookings; b++) {
-      let listing = randomEl(listings);
-      // Avoid duplicate listing for same customer
-      let attempts = 0;
-      while (usedListings.has(listing._id.toString()) && attempts < 20) {
-        listing = randomEl(listings);
-        attempts++;
-      }
-      usedListings.add(listing._id.toString());
-
-      const isCompleted = Math.random() < 0.6;
-      const isPending = !isCompleted && Math.random() < 0.5;
-      const status = isCompleted
-        ? BookingStatusEnum.COMPLETED
-        : isPending
-          ? BookingStatusEnum.IN_PROGRESS
-          : BookingStatusEnum.CONFIRMED;
-
-      const daysAgo = randomInt(10, 120);
-      const stayLength = randomInt(1, 7);
-      const checkIn = isCompleted ? pastDate(daysAgo + stayLength) : futureDate(randomInt(5, 60));
-      const checkOut = new Date(checkIn);
-      checkOut.setDate(checkOut.getDate() + stayLength);
-
-      const guests = randomInt(1, (listing as any).maxGuests || 4);
-      const totalPrice = ((listing as any).price || 100) * stayLength;
-
-      bookingsRaw.push({
-        customerId: customer._id,
-        listingId: listing._id,
-        status,
-        checkIn,
-        checkOut,
-        guests,
-        totalPrice,
-      });
-    }
-  }
-
-  // Also create a few cancelled bookings
-  for (let i = 0; i < 5; i++) {
-    const customer = randomEl(customers);
-    const listing = randomEl(listings);
-    const daysAgo = randomInt(5, 60);
-    bookingsRaw.push({
-      customerId: customer._id,
-      listingId: listing._id,
-      status: BookingStatusEnum.CANCELLED || 'cancelled',
-      checkIn: pastDate(daysAgo + 3),
-      checkOut: pastDate(daysAgo),
-      guests: randomInt(1, 3),
-      totalPrice: ((listing as any).price || 100) * 3,
-    });
-  }
-
-  const bookings: BookingDoc[] = (await Booking.insertMany(bookingsRaw)) as any;
-  console.log(`   → ${bookings.length} bookings created`);
-
-  // ── 5. Create Reviews (only for completed bookings) ───────────────────────
-  console.log('⭐ Creating reviews...');
-
-  const completedBookings = bookings.filter(
-    (b) => b.status === BookingStatusEnum.COMPLETED || b.status === 'completed'
-  );
-
-  const reviewDocs: any[] = [];
-
-  for (const booking of completedBookings) {
-    const star = randomInt(2, 5); // Weighted toward positive
-    const description = randomEl(reviewDescriptions);
-
-    reviewDocs.push({
-      bookingId: booking._id,
-      listingId: booking.listingId,
-      userId: booking.customerId,
-      description,
-      star,
-      stars: star, // in case your schema uses `stars`
-    });
-  }
-
-  const reviews = await Review.insertMany(reviewDocs);
-  console.log(`   → ${reviews.length} reviews created`);
-
-  // ── 6. Back-fill booking.reviewId ─────────────────────────────────────────
-  console.log('🔗 Linking reviews → bookings...');
-  const bulkBookingOps = reviews.map((review: any) => ({
-    updateOne: {
-      filter: { _id: review.bookingId },
-      update: { $set: { reviewId: review._id } },
-    },
-  }));
-  await Booking.bulkWrite(bulkBookingOps);
-
-  // ── 7. Back-fill listing.reviewIds + recalculate ratings ──────────────────
-  console.log('📊 Updating listing ratings...');
-
-  // Group reviews by listing
-  const reviewsByListing = new Map<string, { ids: mongoose.Types.ObjectId[]; stars: number[] }>();
-
-  for (const review of reviews) {
-    const lid = (review as any).listingId.toString();
-    if (!reviewsByListing.has(lid)) {
-      reviewsByListing.set(lid, { ids: [], stars: [] });
-    }
-    const entry = reviewsByListing.get(lid)!;
-    entry.ids.push((review as any)._id);
-    entry.stars.push((review as any).star || (review as any).stars);
-  }
-
-  const bulkListingOps = Array.from(reviewsByListing.entries()).map(([listingId, data]) => {
-    const avgRating = parseFloat(
-      (data.stars.reduce((sum, s) => sum + s, 0) / data.stars.length).toFixed(2)
-    );
-    return {
-      updateOne: {
-        filter: { _id: new mongoose.Types.ObjectId(listingId) },
-        update: {
-          $set: {
-            reviewIds: data.ids,
-            ratings: avgRating,
-          },
-        },
-      },
-    };
+  // ── Admin ──────────────────────────────────────────────────────────────────
+  await Account.create({
+    username: 'admin',
+    password: await hash('admin123'),
+    role: UserRoleEnum.ADMIN,
   });
-  await Listing.bulkWrite(bulkListingOps);
+  console.log('👤 Created admin');
 
-  // ── 8. Summary ────────────────────────────────────────────────────────────
-  console.log('\n╔══════════════════════════════════════════╗');
-  console.log('║          🌱  SEED COMPLETE               ║');
-  console.log('╠══════════════════════════════════════════╣');
-  console.log(`║  Admins:      ${String(admins.length).padStart(3)}                        ║`);
-  console.log(`║  Hosts:       ${String(hosts.length).padStart(3)}                        ║`);
-  console.log(`║  Customers:   ${String(customers.length).padStart(3)}                        ║`);
-  console.log(`║  Listings:    ${String(listings.length).padStart(3)}                        ║`);
-  console.log(`║  Bookings:    ${String(bookings.length).padStart(3)}                        ║`);
-  console.log(`║  Reviews:     ${String(reviews.length).padStart(3)}                        ║`);
-  console.log('╠══════════════════════════════════════════╣');
-  console.log(`║  All passwords: ${PASSWORD.padEnd(23)} ║`);
-  console.log('╚══════════════════════════════════════════╝\n');
+  // ── Service Providers ──────────────────────────────────────────────────────
+  const providerAccounts = await Promise.all(
+    SERVICE_PROVIDERS.map(async (username) =>
+      Account.create({
+        username,
+        password: await hash('provider123'),
+        role: UserRoleEnum.USER,
+        type: UserTypeEnum.SERVICE_PROVIDER,
+      })
+    )
+  );
+  console.log(`🔧 Created ${providerAccounts.length} service providers`);
+
+  // ── Customers ──────────────────────────────────────────────────────────────
+  const customerAccounts = await Promise.all(
+    CUSTOMERS.map(async (username) =>
+      Account.create({
+        username,
+        password: await hash('customer123'),
+        role: UserRoleEnum.USER,
+        type: UserTypeEnum.CUSTOMER,
+      })
+    )
+  );
+  console.log(`🙋 Created ${customerAccounts.length} customers`);
+
+  // ── Listings ───────────────────────────────────────────────────────────────
+  const listings = await Promise.all(
+    LISTINGS_DATA.map(([name, description, serviceType, price, coordinates], idx) => {
+      const provider = providerAccounts[idx % providerAccounts.length];
+      return Listing.create({
+        name,
+        description,
+        serviceType,
+        price,
+        status: ListingStatusEnum.ACTIVE,
+        geoLocation: { type: 'Point', coordinates },
+        userId: provider._id,
+        ratings: 0,
+        photos: [],
+        bookingIds: [],
+        reviewIds: [],
+      });
+    })
+  );
+  console.log(`📋 Created ${listings.length} listings`);
+
+  // Link listings → providers
+  for (const listing of listings) {
+    await Account.findByIdAndUpdate(listing.userId, {
+      $push: { listingIds: listing._id },
+    });
+  }
+
+  // ── Bookings + Reviews ─────────────────────────────────────────────────────
+  let totalBookings = 0;
+  let totalReviews = 0;
+  const listingStarAccumulator: Record<string, number[]> = {};
+
+  for (const customer of customerAccounts) {
+    // Each customer gets 3–5 completed + 1 upcoming + 1 requested
+    const numCompleted = randomBetween(3, 5);
+    const totalNeeded = numCompleted + 2; // +1 upcoming CONFIRMED, +1 REQUESTED
+    const shuffled = [...listings].sort(() => Math.random() - 0.5);
+    const chosen = shuffled.slice(0, Math.min(totalNeeded, listings.length));
+
+    for (let i = 0; i < chosen.length; i++) {
+      const listing = chosen[i];
+
+      let status: string;
+      let scheduledDate: Date;
+      let isCompleted = false;
+
+      if (i < numCompleted) {
+        // Completed past bookings
+        status = BookingStatusEnum.COMPLETED;
+        scheduledDate = pastDate(randomBetween(5, 90));
+        isCompleted = true;
+      } else if (i === numCompleted) {
+        // One upcoming confirmed booking
+        status = BookingStatusEnum.CONFIRMED;
+        scheduledDate = futureDate(randomBetween(3, 20));
+      } else {
+        // One requested (pending approval)
+        status = BookingStatusEnum.REQUESTED;
+        scheduledDate = futureDate(randomBetween(21, 40));
+      }
+
+      const booking = await Booking.create({
+        listingId: listing._id,
+        customerId: customer._id,
+        status,
+        finalPrice: listing.price,
+        paymentStatus: isCompleted ? PaymentStatusEnum.PAID : PaymentStatusEnum.UNPAID,
+        scheduledDate,
+        originalDate: isCompleted ? pastDate(randomBetween(91, 120)) : undefined,
+        isCancelled: false,
+        rescheduleCount: isCompleted ? randomBetween(0, 1) : 0,
+      });
+
+      totalBookings++;
+
+      await Listing.findByIdAndUpdate(listing._id, { $push: { bookingIds: booking._id } });
+      await Account.findByIdAndUpdate(customer._id, { $push: { bookingIds: booking._id } });
+
+      // ── Review: ONLY customers, ONLY on COMPLETED bookings ──
+      if (isCompleted) {
+        const stars = randomBetween(3, 5);
+
+        const review = await Review.create({
+          listingId: listing._id,
+          bookingId: booking._id,
+          userId: customer._id, // always the customer who made the booking
+          description: pickRandom(REVIEW_COMMENTS),
+          stars,
+          beforePhotos: [],
+          afterPhotos: [],
+        });
+
+        totalReviews++;
+
+        await Booking.findByIdAndUpdate(booking._id, { reviewId: review._id });
+        await Listing.findByIdAndUpdate(listing._id, { $push: { reviewIds: review._id } });
+
+        const lid = listing._id.toString();
+        if (!listingStarAccumulator[lid]) listingStarAccumulator[lid] = [];
+        listingStarAccumulator[lid].push(stars);
+      }
+    }
+  }
+
+  // ── Recalculate listing average ratings ───────────────────────────────────
+  for (const [listingId, stars] of Object.entries(listingStarAccumulator)) {
+    const avg = stars.reduce((s, v) => s + v, 0) / stars.length;
+    await Listing.findByIdAndUpdate(listingId, {
+      ratings: Math.round(avg * 10) / 10,
+    });
+  }
+
+  // ── Cancelled bookings: 1–2 per provider listing for realism ─────────────
+  for (const provider of providerAccounts) {
+    const providerListings = listings.filter(
+      (l) => l.userId.toString() === provider._id.toString()
+    );
+    if (!providerListings.length) continue;
+
+    const numCancelled = randomBetween(1, 2);
+    for (let c = 0; c < numCancelled && c < providerListings.length; c++) {
+      const listing = providerListings[c];
+      const customer = pickRandom(customerAccounts);
+
+      const cancelled = await Booking.create({
+        listingId: listing._id,
+        customerId: customer._id,
+        status: BookingStatusEnum.CANCELLED,
+        finalPrice: listing.price,
+        paymentStatus: PaymentStatusEnum.UNPAID,
+        scheduledDate: pastDate(randomBetween(10, 60)),
+        isCancelled: true,
+        cancelledBy: pickRandom(['customer', 'provider']),
+        cancelledAt: pastDate(randomBetween(1, 9)),
+        rescheduleCount: 0,
+      });
+
+      totalBookings++;
+      await Listing.findByIdAndUpdate(listing._id, { $push: { bookingIds: cancelled._id } });
+      await Account.findByIdAndUpdate(customer._id, { $push: { bookingIds: cancelled._id } });
+    }
+  }
+
+  // ── Summary ────────────────────────────────────────────────────────────────
+  console.log(`\n📅 Bookings created:  ${totalBookings}`);
+  console.log(`⭐ Reviews created:   ${totalReviews}`);
+  console.log('\n✅ Seeding complete!');
+  console.log('─────────────────────────────────────────────────');
+  console.log('  admin                / admin123');
+  console.log('');
+  console.log('  customer_arjun       / customer123');
+  console.log('  customer_meena       / customer123');
+  console.log('  customer_rohit       / customer123');
+  console.log('  customer_sita        / customer123');
+  console.log('  customer_vijay       / customer123');
+  console.log('  customer_pooja       / customer123');
+  console.log('  customer_nikhil      / customer123');
+  console.log('  customer_divya       / customer123');
+  console.log('  customer_suresh      / customer123');
+  console.log('  customer_ananya      / customer123');
+  console.log('');
+  console.log('  ravi_movers          / provider123');
+  console.log('  priya_cleaners       / provider123');
+  console.log('  suresh_electrician   / provider123');
+  console.log('  anita_plumber        / provider123');
+  console.log('  deepak_parking       / provider123');
+  console.log('  mohan_carwash        / provider123');
+  console.log('  sunita_cleaning      / provider123');
+  console.log('  rajesh_electrician   / provider123');
+  console.log('  kavita_plumber       / provider123');
+  console.log('  arun_movers          / provider123');
+  console.log('─────────────────────────────────────────────────\n');
 
   await mongoose.disconnect();
-  console.log('🔌 Disconnected from MongoDB');
-}
+};
 
-// ─── Run ────────────────────────────────────────────────────────────────────────
-seed().catch(async (err) => {
+seed().catch((err) => {
   console.error('❌ Seed failed:', err);
-  await mongoose.disconnect();
   process.exit(1);
 });
