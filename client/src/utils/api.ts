@@ -283,3 +283,117 @@ export const updateBookingStatus = async (id: String | undefined, status: String
     throw error?.response?.data?.message || error.message;
   }
 };
+
+//Reviews
+
+export const createReview = async (body: any) => {
+  try {
+    const { data } = await api.post(`/review`, body);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const updateReview = async (id: string, body: any) => {
+  try {
+    const { data } = await api.put(`/review/${id}`, body);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const getReviewsByListingId = async (id: string) => {
+  try {
+    const { data } = await api.get(`/review/listing/${id}`);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+export const uploadReviewBeforePhotos = async (reviewId: string, photos: File[]) => {
+  try {
+    const formData = new FormData();
+    photos.forEach((photo) => {
+      formData.append('photos', photo);
+    });
+
+    const { data } = await api.post(`/review/${reviewId}/before-photos`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+// Upload after photos for a review (max 2)
+export const uploadReviewAfterPhotos = async (reviewId: string, photos: File[]) => {
+  try {
+    const formData = new FormData();
+    photos.forEach((photo) => {
+      formData.append('photos', photo);
+    });
+
+    const { data } = await api.post(`/review/${reviewId}/after-photos`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+// Replace a specific before photo by index
+export const replaceReviewBeforePhoto = async (
+  reviewId: string,
+  photoIndex: number,
+  photo: File
+) => {
+  try {
+    const formData = new FormData();
+    formData.append('photos', photo);
+
+    const { data } = await api.patch(`/review/${reviewId}/before-photos/${photoIndex}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+// Replace a specific after photo by index
+export const replaceReviewAfterPhoto = async (
+  reviewId: string,
+  photoIndex: number,
+  photo: File
+) => {
+  try {
+    const formData = new FormData();
+    formData.append('photos', photo);
+
+    const { data } = await api.patch(`/review/${reviewId}/after-photos/${photoIndex}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};

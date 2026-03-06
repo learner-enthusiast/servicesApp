@@ -5,7 +5,6 @@ import Admin from './Admin';
 import Customer from './Customer';
 import ServiceProvider from './ServiceProvider';
 import { useNavigationStore } from 'store/useNavigationStore';
-import { Box } from '@mui/material';
 
 const Dashboard = () => {
   const { account } = useAuth();
@@ -15,12 +14,12 @@ const Dashboard = () => {
   const isCustomer = !isAdmin && account?.type === UserTypeEnum.CUSTOMER;
   const isServiceProvider = !isAdmin && account?.type === UserTypeEnum.SERVICE_PROVIDER;
   return (
-    <div className="border border-black min-h-screen min-w-full bg-slate-200">
-      <Box sx={{ mt: 4, px: 3, py: 4, maxWidth: 900, mx: 'auto' }}>
+    <div className="min-h-screen min-w-full bg-slate-200">
+      <div className="mt-4 px-3 py-4 max-w-full mx-auto flex justify-center">
         {isAdmin && <Admin currentTab={currentTab} />}
         {isCustomer && <Customer currentTab={currentTab} />}
         {isServiceProvider && <ServiceProvider currentTab={currentTab} />}
-      </Box>
+      </div>
     </div>
   );
 };

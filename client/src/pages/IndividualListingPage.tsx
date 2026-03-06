@@ -1,30 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import {
-  Box,
-  Typography,
-  CircularProgress,
-  Alert,
-  Chip,
-  Paper,
-  Stack,
-  TextField,
-  Button,
-  MenuItem,
-  Autocomplete,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Divider,
-} from '@mui/material';
 import debounce from 'lodash.debounce';
-
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import StarIcon from '@mui/icons-material/Star';
-import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 
 import {
   getListing,
@@ -32,6 +8,7 @@ import {
   getPlaceSuggestions,
   getAddressFromCoordinates,
   createBooking,
+  getReviewsByListingId,
 } from 'utils/api';
 import { useAuth } from 'contexts/AuthContext';
 import { UserRoleEnum, UserTypeEnum, ServiceTypeEnum } from 'utils/enum';
@@ -50,14 +27,102 @@ interface Listing {
   createdAt: string;
 }
 
-const inputSx = {
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '8px',
-    backgroundColor: '#fff',
-    '&:hover fieldset': { borderColor: '#1D6FF2' },
-    '&.Mui-focused fieldset': { borderColor: '#1D6FF2' },
-  },
+interface Review {
+  _id: string;
+  description: string;
+  stars: number;
+  createdAt: string;
+  userId: { username?: string; photo?: { url: string } };
+}
+
+// ─── Star Rating ──────────────────────────────────────────────────────────────
+
+const StarRating: React.FC<{ value: number; size?: string }> = ({ value, size = 'text-sm' }) => (
+  <div className={`flex items-center gap-0.5 ${size}`}>
+    {[1, 2, 3, 4, 5].map((star) => (
+      <svg
+        key={star}
+        className={`w-4 h-4 ${star <= value ? 'text-yellow-400' : 'text-gray-200'}`}
+        fill="currentColor"
+        viewBox="0 0 20 20"
+      >
+        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.37-2.449a1 1 0 00-1.175 0l-3.37 2.449c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.364-1.118L2.063 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.957z" />
+      </svg>
+    ))}
+  </div>
+);
+
+// ─── Reviews Section ──────────────────────────────────────────────────────────
+
+const ReviewsSection: React.FC<{ listingId: string }> = ({ listingId }) => {
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const res = await getReviewsByListingId(listingId);
+        setReviews(res.data || res);
+      } catch {
+        // silently fail
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [listingId]);
+
+  if (loading)
+    return (
+      <div className="flex justify-center py-6">
+        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+
+  if (!reviews.length) return <p className="text-sm text-gray-400 py-2">No reviews yet.</p>;
+
+  return (
+    <div className="space-y-5">
+      {reviews.map((review) => (
+        <div key={review._id} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-base border border-gray-200 overflow-hidden flex-shrink-0">
+                {review.userId?.photo?.url ? (
+                  <img
+                    src={review.userId.photo.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  (review.userId?.username?.[0]?.toUpperCase() ?? '?')
+                )}
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 text-sm leading-tight">
+                  {review.userId?.username ?? 'Anonymous'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {new Date(review.createdAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </p>
+              </div>
+            </div>
+            <StarRating value={review.stars} />
+          </div>
+          {review.description && (
+            <p className="text-sm text-gray-600 leading-relaxed">{review.description}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 };
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 const ListingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,6 +139,8 @@ const ListingDetail: React.FC = () => {
   const [addressName, setAddressName] = useState('');
   const [addressLoading, setAddressLoading] = useState(false);
   const [locationOptions, setLocationOptions] = useState<any[]>([]);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -132,6 +199,7 @@ const ListingDetail: React.FC = () => {
     if (!value || value.length < 3) return;
     const data = await getPlaceSuggestions(value);
     setLocationOptions(data);
+    setShowLocationDropdown(true);
   };
 
   const debouncedFetch = useMemo(() => debounce(fetchSuggestions, 400), []);
@@ -174,396 +242,442 @@ const ListingDetail: React.FC = () => {
     }
   };
 
-  if (loading) {
-    return <Loading />;
-  }
+  if (loading) return <Loading />;
 
-  if (error || !listing) {
+  if (error || !listing)
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-        <Alert severity="error">{error || 'Listing not found'}</Alert>
-      </Box>
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-sm font-medium">
+          {error || 'Listing not found'}
+        </div>
+      </div>
     );
-  }
 
   const isListingActive = listing.status === 'ACTIVE';
-  const statusColor = listing.status === 'ACTIVE' ? '#dcfce7' : '#f3f4f6';
-  const statusTextColor = listing.status === 'ACTIVE' ? '#15803d' : '#6b7280';
+  const hasRatings = listing.ratings != null && listing.ratings > 0;
 
   return (
-    <div className="bg-slate-200">
-      <Box sx={{ maxWidth: 720, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 4, sm: 6 } }}>
-        {/* Photo Grid */}
-        {listing.photos && listing.photos.length > 0 && (
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: listing.photos.length === 1 ? '1fr' : '1fr 1fr',
-              gap: 1.5,
-              mb: 3,
-              borderRadius: '12px',
-              overflow: 'hidden',
-            }}
-          >
-            {listing.photos.map((photo, idx) => (
-              <Box
-                key={idx}
-                component="img"
-                src={photo.url}
-                alt={`${listing.name} ${idx}`}
-                sx={{
-                  width: '100%',
-                  height: { xs: 180, sm: 240 },
-                  objectFit: 'cover',
-                  display: 'block',
-                }}
-              />
-            ))}
-          </Box>
-        )}
-
-        {/* Main Card */}
-        <Paper
-          elevation={0}
-          sx={{
-            border: '1px solid #E0E0E0',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Header */}
-          <Box sx={{ px: { xs: 2, sm: 3 }, pt: 3, pb: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
-              <Box sx={{ flex: 1 }}>
-                {editMode ? (
-                  <TextField
-                    name="name"
-                    value={form.name}
-                    onChange={handleChange}
-                    fullWidth
-                    size="small"
-                    sx={inputSx}
-                  />
-                ) : (
-                  <Typography
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: { xs: 20, sm: 24 },
-                      color: '#0F0F0F',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {listing.name}
-                  </Typography>
-                )}
-              </Box>
-
-              <Chip
-                label={listing.status}
-                size="small"
-                sx={{
-                  backgroundColor: statusColor,
-                  color: statusTextColor,
-                  fontWeight: 600,
-                  fontSize: 11,
-                  letterSpacing: '0.04em',
-                  border: 'none',
-                  flexShrink: 0,
-                }}
-              />
-            </Stack>
-
-            {/* Service type + Rating row */}
-            <Stack direction="row" alignItems="center" gap={1.5} mt={1.5} flexWrap="wrap">
-              {editMode ? (
-                <TextField
-                  select
-                  name="serviceType"
-                  value={form.serviceType}
-                  onChange={handleChange}
-                  size="small"
-                  sx={{ ...inputSx, minWidth: 160 }}
-                >
-                  {Object.values(ServiceTypeEnum).map((type) => (
-                    <MenuItem key={type} value={type}>
-                      {type}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              ) : (
-                <Chip
-                  label={listing.serviceType}
-                  size="small"
-                  sx={{
-                    backgroundColor: '#EFF6FF',
-                    color: '#1D6FF2',
-                    fontWeight: 500,
-                    fontSize: 12,
-                    border: 'none',
-                  }}
-                />
-              )}
-
-              {listing.ratings != null && (
-                <Stack direction="row" alignItems="center" gap={0.5}>
-                  <StarIcon sx={{ color: '#f59e0b', fontSize: 16 }} />
-                  <Typography sx={{ fontSize: 13, fontWeight: 600, color: '#0F0F0F' }}>
-                    {listing.ratings}
-                  </Typography>
-                </Stack>
-              )}
-            </Stack>
-          </Box>
-
-          <Divider sx={{ borderColor: '#E0E0E0' }} />
-
-          {/* Details */}
-          <Box sx={{ px: { xs: 2, sm: 3 }, py: 2.5 }}>
-            <Stack spacing={2}>
-              {/* Price */}
-              <Stack direction="row" alignItems="center" gap={1}>
-                <CurrencyRupeeIcon sx={{ fontSize: 18, color: '#6B6B6B' }} />
-                {editMode ? (
-                  <TextField
-                    type="number"
-                    name="price"
-                    value={form.price}
-                    onChange={handleChange}
-                    size="small"
-                    sx={{ ...inputSx, width: 140 }}
-                  />
-                ) : (
-                  <Typography sx={{ fontWeight: 700, fontSize: 20, color: '#0F0F0F' }}>
-                    {listing.price.toLocaleString('en-IN')}
-                  </Typography>
-                )}
-              </Stack>
-
-              {/* Location */}
-              <Stack direction="row" alignItems="center" gap={1}>
-                <LocationOnIcon sx={{ fontSize: 18, color: '#6B6B6B', flexShrink: 0 }} />
-                {editMode ? (
-                  <Autocomplete
-                    options={locationOptions}
-                    getOptionLabel={(option: any) => option.fullAddress}
-                    onInputChange={(_, value) => debouncedFetch(value)}
-                    onChange={(_, selected: any) => {
-                      if (selected) {
-                        setForm({
-                          ...form,
-                          geoLocation: {
-                            type: 'Point',
-                            coordinates: [
-                              selected.coordinates.longitude,
-                              selected.coordinates.latitude,
-                            ],
-                          },
-                        });
-                      }
-                    }}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Update Location" size="small" sx={inputSx} />
-                    )}
-                    sx={{ minWidth: 280 }}
-                  />
-                ) : addressLoading ? (
-                  <CircularProgress size={14} sx={{ color: '#6B6B6B' }} />
-                ) : (
-                  <Typography sx={{ fontSize: 14, color: '#6B6B6B' }}>{addressName}</Typography>
-                )}
-              </Stack>
-
-              {/* Description */}
-              <Box>
-                {editMode ? (
-                  <TextField
-                    multiline
-                    rows={3}
-                    name="description"
-                    value={form.description}
-                    onChange={handleChange}
-                    fullWidth
-                    size="small"
-                    sx={inputSx}
-                  />
-                ) : (
-                  <Typography sx={{ fontSize: 14, color: '#6B6B6B', lineHeight: 1.7 }}>
-                    {listing.description}
-                  </Typography>
-                )}
-              </Box>
-            </Stack>
-          </Box>
-
-          {/* Actions */}
-          {(canEdit || (canBook && isListingActive)) && (
-            <>
-              <Divider sx={{ borderColor: '#E0E0E0' }} />
-              <Box sx={{ px: { xs: 2, sm: 3 }, py: 2 }}>
-                {canEdit && (
-                  <Stack direction="row" gap={1.5}>
-                    {editMode ? (
-                      <>
-                        <Button
-                          variant="contained"
-                          onClick={handleUpdate}
-                          sx={{
-                            borderRadius: '6px',
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            backgroundColor: '#1D6FF2',
-                            boxShadow: 'none',
-                            '&:hover': { backgroundColor: '#1558CC', boxShadow: 'none' },
-                          }}
-                        >
-                          Save Changes
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          onClick={() => setEditMode(false)}
-                          sx={{
-                            borderRadius: '6px',
-                            textTransform: 'none',
-                            fontWeight: 500,
-                            borderColor: '#E0E0E0',
-                            color: '#0F0F0F',
-                            '&:hover': { borderColor: '#1D6FF2', color: '#1D6FF2' },
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        variant="outlined"
-                        startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
-                        onClick={() => setEditMode(true)}
-                        sx={{
-                          borderRadius: '6px',
-                          textTransform: 'none',
-                          fontWeight: 500,
-                          borderColor: '#E0E0E0',
-                          color: '#0F0F0F',
-                          '&:hover': { borderColor: '#1D6FF2', color: '#1D6FF2' },
-                        }}
-                      >
-                        Edit Listing
-                      </Button>
-                    )}
-                  </Stack>
-                )}
-
-                {canBook && isListingActive && (
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<CalendarMonthIcon sx={{ fontSize: 18 }} />}
-                    onClick={handleBookingOpen}
-                    fullWidth
-                    sx={{
-                      borderRadius: '6px',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      backgroundColor: '#1D6FF2',
-                      boxShadow: 'none',
-                      height: 48,
-                      '&:hover': { backgroundColor: '#1558CC', boxShadow: 'none' },
-                    }}
-                  >
-                    Book Now
-                  </Button>
-                )}
-              </Box>
-            </>
+    <div className="bg-gray-50 min-h-screen mt-4">
+      <main className="mx-auto px-4 py-10">
+        <div className="mb-7">
+          {editMode ? (
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3 w-full bg-white border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          ) : (
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
+              {listing.name}
+            </h1>
           )}
-        </Paper>
-
-        {/* Booking Dialog */}
-        <Dialog
-          open={bookingOpen}
-          onClose={() => setBookingOpen(false)}
-          maxWidth="xs"
-          fullWidth
-          PaperProps={{
-            elevation: 0,
-            sx: {
-              border: '1px solid #E0E0E0',
-              borderRadius: '8px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
-            },
-          }}
-        >
-          <DialogTitle sx={{ fontWeight: 700, fontSize: 16, color: '#0F0F0F', pb: 1 }}>
-            Book this Service
-          </DialogTitle>
-          <Divider sx={{ borderColor: '#E0E0E0' }} />
-          <DialogContent sx={{ pt: 2.5 }}>
-            {bookingSuccess ? (
-              <Alert severity="success" sx={{ borderRadius: '8px' }}>
-                Booking confirmed! We'll see you soon.
-              </Alert>
-            ) : (
-              <Stack spacing={2}>
-                <Typography sx={{ fontSize: 13, color: '#6B6B6B' }}>
-                  Select a date and time for{' '}
-                  <strong style={{ color: '#0F0F0F' }}>{listing.name}</strong>.
-                </Typography>
-                <TextField
-                  label="Scheduled Date & Time"
-                  type="datetime-local"
-                  value={scheduledDate}
-                  onChange={(e) => setScheduledDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  inputProps={{ min: new Date().toISOString().slice(0, 16) }}
-                  fullWidth
-                  size="small"
-                  sx={inputSx}
-                />
-                {bookingError && (
-                  <Alert severity="error" sx={{ borderRadius: '8px' }}>
-                    {bookingError}
-                  </Alert>
-                )}
-              </Stack>
-            )}
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-            <Button
-              onClick={() => setBookingOpen(false)}
-              disabled={bookingLoading}
-              sx={{
-                borderRadius: '6px',
-                textTransform: 'none',
-                fontWeight: 500,
-                color: '#6B6B6B',
-                '&:hover': { backgroundColor: '#F5F5F5' },
-              }}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Status badge */}
+            <span
+              className={`px-3 py-1 text-xs font-bold tracking-wide rounded-full flex items-center gap-1.5 border ${
+                isListingActive
+                  ? 'bg-green-100 text-green-700 border-green-200'
+                  : 'bg-gray-100 text-gray-600 border-gray-200'
+              }`}
             >
-              {bookingSuccess ? 'Close' : 'Cancel'}
-            </Button>
-            {!bookingSuccess && (
-              <Button
-                variant="contained"
-                onClick={handleBookingSubmit}
-                disabled={bookingLoading}
-                startIcon={bookingLoading ? <CircularProgress size={14} color="inherit" /> : null}
-                sx={{
-                  borderRadius: '6px',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  backgroundColor: '#1D6FF2',
-                  boxShadow: 'none',
-                  '&:hover': { backgroundColor: '#1558CC', boxShadow: 'none' },
-                  '&.Mui-disabled': { backgroundColor: '#E0E0E0', color: '#9E9E9E' },
-                }}
+              <span
+                className={`w-2 h-2 rounded-full ${isListingActive ? 'bg-green-500' : 'bg-gray-400'}`}
+              />
+              {listing.status}
+            </span>
+
+            {/* Service type */}
+            {editMode ? (
+              <select
+                name="serviceType"
+                value={form.serviceType}
+                onChange={handleChange}
+                className="text-xs font-semibold bg-white border border-gray-200 rounded-full px-3 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-600"
               >
-                {bookingLoading ? 'Booking...' : 'Confirm Booking'}
-              </Button>
+                {Object.values(ServiceTypeEnum).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full border border-gray-200">
+                {listing.serviceType}
+              </span>
             )}
-          </DialogActions>
-        </Dialog>
-      </Box>
+
+            {/* Location */}
+            {!editMode && (
+              <span className="text-sm text-gray-500 flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {addressLoading ? (
+                  <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  addressName
+                )}
+              </span>
+            )}
+
+            {/* Rating badge */}
+            {hasRatings && (
+              <span className="flex items-center gap-1 bg-yellow-50 border border-yellow-100 px-2 py-1 rounded-lg">
+                <svg
+                  className="w-3.5 h-3.5 text-yellow-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.37-2.449a1 1 0 00-1.175 0l-3.37 2.449c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.364-1.118L2.063 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.957z" />
+                </svg>
+                <span className="text-gray-900 font-bold text-xs">{listing.ratings}</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          {/* Left: photos + description + reviews */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Photos */}
+            {listing.photos && listing.photos.length > 0 ? (
+              <div
+                className={`grid gap-2 rounded-2xl overflow-hidden ${
+                  listing.photos.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                }`}
+              >
+                {listing.photos.map((photo, idx) => (
+                  <img
+                    key={idx}
+                    src={photo.url}
+                    alt={`${listing.name} ${idx}`}
+                    className="w-full h-72 object-cover block"
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="w-full h-72 bg-gray-200 rounded-2xl flex flex-col items-center justify-center text-gray-400 border border-gray-300">
+                <svg
+                  className="w-12 h-12 mb-2 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="text-base font-medium">No photos yet</span>
+              </div>
+            )}
+
+            {/* Description */}
+            <div>
+              <h2 className="text-xl font-bold mb-3 text-gray-900">About this service</h2>
+              {editMode ? (
+                <textarea
+                  name="description"
+                  value={form.description}
+                  onChange={handleChange}
+                  rows={5}
+                  className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              ) : (
+                <p className="text-gray-600 leading-relaxed bg-white p-5 rounded-xl border border-gray-200 shadow-sm text-sm">
+                  {listing.description}
+                </p>
+              )}
+            </div>
+
+            {/* Location edit (only in edit mode) */}
+            {editMode && (
+              <div>
+                <h2 className="text-xl font-bold mb-3 text-gray-900">Update Location</h2>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search for a location..."
+                    value={locationQuery}
+                    onChange={(e) => {
+                      setLocationQuery(e.target.value);
+                      debouncedFetch(e.target.value);
+                    }}
+                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {showLocationDropdown && locationOptions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">
+                      {locationOptions.map((option: any, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            setForm({
+                              ...form,
+                              geoLocation: {
+                                type: 'Point',
+                                coordinates: [
+                                  option.coordinates.longitude,
+                                  option.coordinates.latitude,
+                                ],
+                              },
+                            });
+                            setLocationQuery(option.fullAddress);
+                            setShowLocationDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                        >
+                          {option.fullAddress}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Reviews */}
+            {hasRatings && (
+              <div>
+                <div className="flex items-center gap-3 mb-5">
+                  <h2 className="text-xl font-bold text-gray-900">Reviews</h2>
+                  <span className="flex items-center gap-1 bg-yellow-50 border border-yellow-100 px-2 py-1 rounded-lg">
+                    <svg
+                      className="w-3.5 h-3.5 text-yellow-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.286 3.957c.3.921-.755 1.688-1.54 1.118l-3.37-2.449a1 1 0 00-1.175 0l-3.37 2.449c-.784.57-1.838-.197-1.539-1.118l1.286-3.957a1 1 0 00-.364-1.118L2.063 9.384c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.957z" />
+                    </svg>
+                    <span className="text-gray-900 font-bold text-xs">{listing.ratings}</span>
+                  </span>
+                </div>
+                <ReviewsSection listingId={listing._id} />
+              </div>
+            )}
+          </div>
+
+          {/* Right: sticky sidebar */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-8 bg-white p-6 rounded-2xl border border-gray-200 shadow-xl">
+              {/* Price */}
+              <div className="mb-6">
+                {editMode ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-extrabold text-gray-900">₹</span>
+                    <input
+                      type="number"
+                      name="price"
+                      value={form.price}
+                      onChange={handleChange}
+                      className="text-3xl font-extrabold text-gray-900 w-full bg-transparent border-b-2 border-gray-300 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <span className="text-4xl font-extrabold text-gray-900">
+                      ₹{listing.price.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-gray-500 font-medium ml-1">/ total</span>
+                  </div>
+                )}
+              </div>
+
+              {/* CTA Buttons */}
+              {canEdit && (
+                <div className="space-y-2 mb-6">
+                  {editMode ? (
+                    <>
+                      <button
+                        onClick={handleUpdate}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-md shadow-blue-100 text-sm"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        Save Changes
+                      </button>
+                      <button
+                        onClick={() => setEditMode(false)}
+                        className="w-full bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-4 rounded-xl border border-gray-200 transition duration-200 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-md shadow-blue-200 text-sm"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                        />
+                      </svg>
+                      Edit Listing
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {canBook && isListingActive && (
+                <button
+                  onClick={handleBookingOpen}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-md shadow-blue-200 mb-6 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Book Now
+                </button>
+              )}
+
+              {/* Location section */}
+              <div className="border-t border-gray-100 pt-5">
+                <h3 className="font-bold text-gray-900 mb-2 text-sm">Location</h3>
+                <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                  {addressLoading ? (
+                    <span className="inline-block w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    addressName
+                  )}
+                </p>
+                <div className="w-full h-28 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 overflow-hidden relative">
+                  <div
+                    className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)',
+                      backgroundSize: '10px 10px',
+                    }}
+                  />
+                  <svg
+                    className="w-8 h-8 text-red-400 relative z-10 drop-shadow"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Booking Dialog */}
+      {bookingOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={(e) => e.target === e.currentTarget && setBookingOpen(false)}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm">
+            <div className="px-6 pt-6 pb-4">
+              <h2 className="text-lg font-bold text-gray-900">Book this Service</h2>
+            </div>
+            <div className="border-t border-gray-100" />
+            <div className="px-6 py-5">
+              {bookingSuccess ? (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Booking confirmed! We'll see you soon.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500">
+                    Select a date and time for{' '}
+                    <strong className="text-gray-900">{listing.name}</strong>.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5 tracking-wide uppercase">
+                      Scheduled Date & Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={scheduledDate}
+                      min={new Date().toISOString().slice(0, 16)}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  {bookingError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                      {bookingError}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="border-t border-gray-100" />
+            <div className="px-6 py-4 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setBookingOpen(false)}
+                disabled={bookingLoading}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 rounded-xl transition"
+              >
+                {bookingSuccess ? 'Close' : 'Cancel'}
+              </button>
+              {!bookingSuccess && (
+                <button
+                  onClick={handleBookingSubmit}
+                  disabled={bookingLoading}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-bold rounded-xl text-sm transition flex items-center gap-2"
+                >
+                  {bookingLoading && (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  {bookingLoading ? 'Booking...' : 'Confirm Booking'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

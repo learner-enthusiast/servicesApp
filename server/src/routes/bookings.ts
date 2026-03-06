@@ -9,14 +9,12 @@ import {
   getBookingsByListingId,
   getBookingsByCustomerId,
   approveBooking,
-  uploadBookingPhotos,
   getBookingsByServiceProviderId,
   approveReschedule,
 } from '../controllers/booking';
 import checkBearerToken from '../middlewares/check-bearer-token';
 import checkRole from '../middlewares/check-roles';
 import errorHandler from '../middlewares/error-handler';
-import { multerUpload } from '../middlewares/multer';
 import { UserRoleEnum } from '../utils/enums';
 
 const router = Router();
@@ -40,11 +38,11 @@ router.post('/', checkRole(UserRoleEnum.USER), createBooking);
 router.post('/:id/approve', approveBooking);
 
 // Upload before/after photos for a booking (by customer)
-router.post(
-  '/:id/photos',
-  multerUpload.fields([{ name: 'beforePhotos' }, { name: 'afterPhotos' }]),
-  uploadBookingPhotos
-);
+// router.post(
+//   '/:id/photos',
+//   multerUpload.fields([{ name: 'beforePhotos' }, { name: 'afterPhotos' }]),
+//   uploadBookingPhotos
+// );
 
 // Update booking status (listing owner or admin)
 router.patch('/:id/status', updateBookingStatus);

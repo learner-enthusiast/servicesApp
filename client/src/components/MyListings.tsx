@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { getMyListings, toggleListingStatus } from 'utils/api';
-import { Grid, Box, Typography } from '@mui/material';
-import ListOutlinedIcon from '@mui/icons-material/ListOutlined';
 import Pagination from './Pagination';
 import ListingCard from './ListingCard';
 import Loading from './Loading';
@@ -44,7 +42,7 @@ const MyListings = () => {
     setTogglingId(id);
     try {
       toggleListingStatus(id);
-      let newStatus =
+      const newStatus =
         currentStatus === ListingStatusEnum.ACTIVE
           ? ListingStatusEnum.INACTIVE
           : ListingStatusEnum.ACTIVE;
@@ -61,45 +59,39 @@ const MyListings = () => {
   if (loading) return <Loading />;
 
   return (
-    <Box>
+    <div>
       {myListings.length === 0 ? (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            py: 10,
-            border: '1px solid #E0E0E0',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-          }}
-        >
-          <ListOutlinedIcon sx={{ fontSize: 40, color: '#D0D0D0', mb: 1.5 }} />
-          <Typography sx={{ fontWeight: 600, fontSize: 15, color: '#0F0F0F', mb: 0.5 }}>
-            No listings yet
-          </Typography>
-          <Typography sx={{ fontSize: 13, color: '#6B6B6B' }}>
-            Listings you create will appear here.
-          </Typography>
-        </Box>
+        <div className="flex flex-col items-center justify-center py-16 border border-gray-200 rounded-lg bg-white shadow-sm">
+          <svg
+            className="w-10 h-10 text-gray-300 mb-3"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+            />
+          </svg>
+          <p className="text-sm font-semibold text-gray-900 mb-1">No listings yet</p>
+          <p className="text-sm text-gray-500">Listings you create will appear here.</p>
+        </div>
       ) : (
         <>
-          <Grid container spacing={2}>
+          <div className="flex flex-col gap-3">
             {myListings.map((listing) => (
-              <Grid item xs={12} key={listing._id}>
-                <div className="cursor-pointer">
-                  <ListingCard
-                    listing={listing}
-                    showToggle
-                    togglingId={togglingId}
-                    onToggle={handleToggle}
-                  />
-                </div>
-              </Grid>
+              <div key={listing._id} className="cursor-pointer">
+                <ListingCard
+                  listing={listing}
+                  showToggle
+                  togglingId={togglingId}
+                  onToggle={handleToggle}
+                />
+              </div>
             ))}
-          </Grid>
+          </div>
 
           <Pagination
             page={page}
@@ -108,7 +100,7 @@ const MyListings = () => {
           />
         </>
       )}
-    </Box>
+    </div>
   );
 };
 

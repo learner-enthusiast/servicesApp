@@ -83,6 +83,7 @@ export const ListingStatusEnum = Object.freeze({
 export const CancelledByEnum = Object.freeze({
   CUSTOMER: 'CUSTOMER',
   SERVICE_PROVIDER: 'SERVICE_PROVIDER',
+  ADMIN: 'ADMIN',
 });
 
 export const DeletionRequestEnum = Object.freeze({

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { TextField, MenuItem, Stack, Button, Paper } from '@mui/material';
 
 import { ListingStatusEnum, ServiceTypeEnum } from 'utils/enum';
 import LocationSearch from './LocationSearch';
@@ -8,16 +7,24 @@ interface Props {
   onSearch: (filters: any) => void;
 }
 
-const selectSx = {
-  width: { xs: '100%', sm: '100%', md: 'auto' },
-  minWidth: { md: 140 },
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '8px',
-    backgroundColor: '#fff',
-    '&:hover fieldset': { borderColor: '#1D6FF2' },
-    '&.Mui-focused fieldset': { borderColor: '#1D6FF2' },
-  },
-};
+const RADIUS_OPTIONS = [
+  { label: '1 km', value: 1 },
+  { label: '5 km', value: 5 },
+  { label: '10 km', value: 10 },
+  { label: '20 km', value: 20 },
+];
+
+const RATING_OPTIONS = [
+  { label: 'No Ratings', value: 0 },
+  { label: '1+ Stars', value: 1 },
+  { label: '2+ Stars', value: 2 },
+  { label: '3+ Stars', value: 3 },
+  { label: '4+ Stars', value: 4 },
+  { label: '5 Stars', value: 5 },
+];
+
+const selectCls =
+  'border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 bg-white cursor-pointer';
 
 export default function ListingsSearchBar({ onSearch }: Props) {
   const [filters, setFilters] = useState({
@@ -29,134 +36,97 @@ export default function ListingsSearchBar({ onSearch }: Props) {
     minRating: '',
   });
 
-  const handleChange = (e: any) => {
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
-  };
-
-  const handleSearch = () => {
-    onSearch(filters);
   };
 
   const isDisabled = Object.values(filters).some((v) => v === '');
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: { xs: 2, sm: 2.5 },
-        border: '1px solid #E0E0E0',
-        borderRadius: '8px',
-        backgroundColor: '#fff',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-      }}
-    >
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={1.5}
-        alignItems={{ xs: 'stretch', md: 'center' }}
+    <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-wrap items-center gap-3 w-fit">
+      {/* Service Type */}
+      <select
+        name="serviceType"
+        value={filters.serviceType}
+        onChange={handleChange}
+        className={`${selectCls} min-w-[130px]`}
       >
-        {/* Row 1 on tablet: Service Type + Status */}
-        <Stack
-          direction={{ xs: 'column', sm: 'row', md: 'row' }}
-          spacing={1.5}
-          sx={{ width: { xs: '100%', md: 'auto' } }}
-        >
-          <TextField
-            select
-            label="Service Type"
-            name="serviceType"
-            value={filters.serviceType}
-            onChange={handleChange}
-            size="small"
-            sx={selectSx}
-          >
-            {Object.values(ServiceTypeEnum).map((item) => (
-              <MenuItem key={item} value={item}>
-                {item}
-              </MenuItem>
-            ))}
-          </TextField>
+        <option value="" disabled hidden>
+          Service Type
+        </option>
+        {Object.values(ServiceTypeEnum).map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
 
-          <TextField
-            select
-            label="Status"
-            name="status"
-            value={filters.status}
-            onChange={handleChange}
-            size="small"
-            sx={selectSx}
-          >
-            {Object.values(ListingStatusEnum).map((item) => (
-              <MenuItem key={item} value={item}>
-                {item}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
+      {/* Status */}
+      <select
+        name="status"
+        value={filters.status}
+        onChange={handleChange}
+        className={`${selectCls} min-w-[110px]`}
+      >
+        <option value="" disabled hidden>
+          Status
+        </option>
+        {Object.values(ListingStatusEnum).map((item) => (
+          <option key={item} value={item}>
+            {item}
+          </option>
+        ))}
+      </select>
 
-        {/* Location — full width on mobile/tablet */}
-        <LocationSearch setFilters={setFilters} />
+      {/* Location — existing component */}
+      <LocationSearch setFilters={setFilters} />
 
-        {/* Row 2 on tablet: Radius + Rating */}
-        <Stack
-          direction={{ xs: 'column', sm: 'row', md: 'row' }}
-          spacing={1.5}
-          sx={{ width: { xs: '100%', md: 'auto' } }}
-        >
-          <TextField
-            select
-            label="Radius (km)"
-            name="radiusKm"
-            value={filters.radiusKm}
-            onChange={handleChange}
-            size="small"
-            sx={{ ...selectSx, minWidth: { md: 120 } }}
-          >
-            <MenuItem value={1}>1 km</MenuItem>
-            <MenuItem value={5}>5 km</MenuItem>
-            <MenuItem value={10}>10 km</MenuItem>
-            <MenuItem value={20}>20 km</MenuItem>
-          </TextField>
+      {/* Radius */}
+      <select
+        name="radiusKm"
+        value={filters.radiusKm}
+        onChange={handleChange}
+        className={`${selectCls} min-w-[120px]`}
+      >
+        <option value="" disabled hidden>
+          Radius (km)
+        </option>
+        {RADIUS_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
 
-          <TextField
-            select
-            label="Min Rating"
-            name="minRating"
-            value={filters.minRating}
-            onChange={handleChange}
-            size="small"
-            sx={{ ...selectSx, minWidth: { md: 120 } }}
-          >
-            <MenuItem value={0}>No Ratings</MenuItem>
-            <MenuItem value={1}>1+</MenuItem>
-            <MenuItem value={2}>2+</MenuItem>
-            <MenuItem value={3}>3+</MenuItem>
-            <MenuItem value={4}>4+</MenuItem>
-            <MenuItem value={5}>5</MenuItem>
-          </TextField>
-        </Stack>
+      {/* Min Rating */}
+      <select
+        name="minRating"
+        value={filters.minRating}
+        onChange={handleChange}
+        className={`${selectCls} min-w-[120px]`}
+      >
+        <option value="" disabled hidden>
+          Min Rating
+        </option>
+        {RATING_OPTIONS.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
 
-        <Button
-          variant="contained"
-          onClick={handleSearch}
-          disabled={isDisabled}
-          sx={{
-            borderRadius: '6px',
-            backgroundColor: '#1D6FF2',
-            textTransform: 'none',
-            fontWeight: 600,
-            px: 3,
-            height: 40,
-            width: { xs: '100%', md: 'auto' },
-            boxShadow: 'none',
-            whiteSpace: 'nowrap',
-            '&:hover': { backgroundColor: '#1558CC', boxShadow: 'none' },
-            '&.Mui-disabled': { backgroundColor: '#E0E0E0', color: '#9E9E9E' },
-          }}
-        >
-          Search
-        </Button>
-      </Stack>
-    </Paper>
+      {/* Search button */}
+      <button
+        onClick={() => onSearch(filters)}
+        disabled={isDisabled}
+        className={`font-semibold px-4 py-1.5 rounded-md text-sm transition-colors ${
+          isDisabled
+            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+        }`}
+      >
+        Search
+      </button>
+    </div>
   );
 }

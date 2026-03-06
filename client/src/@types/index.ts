@@ -3,13 +3,14 @@ export interface Account {
   password: string;
   role: 'USER' | 'ADMIN';
   type: 'CUSTOMER' | 'SERVICE_PROVIDER';
+  photo?: string | undefined;
 }
 
 export interface FormData {
   username: Account['username'];
   password: Account['password'];
   userType: String;
-  image: File | null;
+  image?: File | null;
 }
 
 export interface TabType {

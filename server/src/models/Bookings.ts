@@ -15,26 +15,12 @@ const BookingSchema = new Schema<Booking>(
     paymentStatus: { type: String, enum: Object.values(PaymentStatusEnum) },
     paymentId: { type: String },
     isCancelled: { type: Boolean, default: false },
-    cancelledBy: { type: Types.ObjectId },
+    cancelledBy: { type: String },
     cancelledAt: { type: Date },
     rescheduleCount: { type: Number, default: 0 },
     originalDate: { type: Date },
     scheduledDate: { type: Date, required: true },
     reviewId: { type: Schema.Types.ObjectId, ref: 'Review' },
-    beforePhotos: [
-      {
-        url: { type: String, required: true },
-        isPrimary: { type: Boolean, default: false },
-        uploadedAt: { type: Date, default: Date.now },
-      },
-    ],
-    afterPhotos: [
-      {
-        url: { type: String, required: true },
-        isPrimary: { type: Boolean, default: false },
-        uploadedAt: { type: Date, default: Date.now },
-      },
-    ],
   },
   { timestamps: true }
 );

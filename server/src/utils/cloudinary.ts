@@ -68,8 +68,10 @@ export const uploadMultipleToCloudinary = async (files: Express.Multer.File[]) =
     files.map(async (file) => {
       const result = await uploadOnCloudinary(file.path);
 
-      // Optional: delete temp file after upload
-      fs.unlinkSync(file.path);
+      // Safely delete temp file (may already be deleted by uploadOnCloudinary)
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
 
       return {
         url: result.secure_url || result.url,

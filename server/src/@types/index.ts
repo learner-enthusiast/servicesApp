@@ -64,6 +64,14 @@ export interface Booking {
   reviewId?: string | Types.ObjectId;
   createdAt?: Date;
   updatedAt?: Date;
+}
+export interface Review {
+  listingId: string | Types.ObjectId;
+  bookingId: string | Types.ObjectId;
+  userId: string | Types.ObjectId;
+  description?: string;
+  stars: number; // 1-5
+  createdAt?: Date;
   beforePhotos: {
     url: string;
     isPrimary?: boolean;
@@ -74,12 +82,4 @@ export interface Booking {
     isPrimary?: boolean;
     uploadedAt?: Date;
   }[];
-}
-export interface Review {
-  listingId: string | Types.ObjectId;
-  bookingId: string | Types.ObjectId;
-  userId: string | Types.ObjectId;
-  description?: string;
-  stars: number; // 1-5
-  createdAt?: Date;
 }
