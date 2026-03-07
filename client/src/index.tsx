@@ -1,12 +1,13 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import CssBaseline from '@mui/material/CssBaseline'
-import { AuthProvider } from 'contexts/AuthContext'
-import App from 'App'
-import 'styles/index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import CssBaseline from '@mui/material/CssBaseline';
+import { AuthProvider } from 'contexts/AuthContext';
+import App from 'App';
+import 'styles/index.css';
+import 'shepherd.js/dist/css/shepherd.css';
 
-const element = document.getElementById('root') as HTMLElement
-const root = ReactDOM.createRoot(element)
+const element = document.getElementById('root') as HTMLElement;
+const root = ReactDOM.createRoot(element);
 
 root.render(
   <React.StrictMode>
@@ -15,4 +16,4 @@ root.render(
       <App />
     </AuthProvider>
   </React.StrictMode>
-)
+);

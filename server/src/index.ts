@@ -25,7 +25,7 @@ const bootstrap = async () => {
   app.use('/listing', listingRoutes);
   app.use('/review', reviewRoutes);
   app.use('/location', locationRoutes);
-  app.use('/api/ai', aiRoutes);
+  app.use('/ai', aiRoutes);
   // add rest of routes here...
 
   app.listen(PORT, () => {

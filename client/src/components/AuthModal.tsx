@@ -43,6 +43,7 @@ const AuthModal: React.FC<Props> = () => {
       [name]: files ? files[0] : value,
     }));
   };
+  console.log(formData);
   const clickSubmit = async () => {
     setLoading(true);
     setError('');

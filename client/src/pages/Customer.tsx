@@ -30,9 +30,9 @@ const Customer = ({ currentTab }: any) => {
   };
 
   return (
-    <div>
+    <div className="flex justify-center">
       {currentTab === NavigationTabEnum.SEARCH && (
-        <>
+        <div className="flex justify-center items-center flex-col max-w-[1280px]">
           <ListingsSearchBar onSearch={handleSearch} />
           {loading ? (
             <Loading />
@@ -47,7 +47,7 @@ const Customer = ({ currentTab }: any) => {
               ))}
             </Grid>
           )}
-        </>
+        </div>
       )}
       {currentTab === NavigationTabEnum.MY_BOOKINGS && <UserMyBookings />}
     </div>

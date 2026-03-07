@@ -92,9 +92,19 @@ export const createListing = async ({
   }
 };
 
-export const getMyListings = async (page: number) => {
+export const getMyListings = async (query: any) => {
   try {
-    const { data } = await api.get('/listing/me', { params: { page } });
+    const { data } = await api.get('/listing/me', { params: query });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const getMyListingsAdmin = async (query: any) => {
+  try {
+    const { data } = await api.get('/listing/admin/individualUser', { params: query });
 
     return data;
   } catch (error: any) {
@@ -157,8 +167,8 @@ export const getAddressFromCoordinates = async (coordinates: Array<string>) => {
   try {
     const { data } = await api.get('/location/reverse', {
       params: {
-        latitude: coordinates[0],
-        longitude: coordinates[1],
+        latitude: coordinates[1],
+        longitude: coordinates[0],
       },
     });
 
@@ -183,6 +193,16 @@ export const createBooking = async (body: { listingId: string; scheduledDate: st
 export const getUserMyBookings = async (query: any) => {
   try {
     const { data } = await api.get('/booking/my-bookings', { params: { query } });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const getUserMyBookingsAdmin = async (query: any) => {
+  try {
+    const { data } = await api.get('/booking/user-bookings', { params: query });
 
     return data;
   } catch (error: any) {
@@ -391,6 +411,45 @@ export const replaceReviewAfterPhoto = async (
         'Content-Type': 'multipart/form-data',
       },
     });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const suggestDescription = async (body: any) => {
+  try {
+    const { data } = await api.post(`/ai/suggest-description`, body);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+export const suggestPricing = async (body: any) => {
+  try {
+    const { data } = await api.post(`/ai/suggest-pricing`, body);
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const getUsersByType = async (query: any) => {
+  try {
+    const { data } = await api.get(`/auth/users`, { params: query });
+
+    return data;
+  } catch (error: any) {
+    throw error?.response?.data?.message || error.message;
+  }
+};
+
+export const fetchOverviewStatsfromapi = async () => {
+  try {
+    const { data } = await api.get(`/auth/overviewStats`);
 
     return data;
   } catch (error: any) {

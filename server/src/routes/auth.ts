@@ -6,6 +6,9 @@ import login from '../controllers/auth/login';
 import loginWithToken from '../controllers/auth/login-with-token';
 import { multerUpload } from '../middlewares/multer';
 
+import checkRole from '../middlewares/check-roles';
+import { getUsersByType, getOverviewStats } from '../controllers/auth/auth-controller';
+
 // initialize router
 const router = express.Router();
 
@@ -17,6 +20,9 @@ router.post('/login', [], login);
 
 // GET at path: http://localhost:8080/auth/account
 router.get('/login', [checkBearerToken], loginWithToken);
+
+router.get('/users', checkBearerToken, checkRole('ADMIN'), getUsersByType);
+router.get('/overviewStats', checkBearerToken, checkRole('ADMIN'), getOverviewStats);
 
 router.use(errorHandler);
 

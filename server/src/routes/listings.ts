@@ -10,6 +10,7 @@ import {
   getMyListings,
   updateListingStatus,
   updateListingImages,
+  getMyListingsAdmin,
 } from '../controllers/listings';
 import checkUserType from '../middlewares/check-userType';
 import errorHandler from '../middlewares/error-handler';
@@ -24,12 +25,12 @@ router.get('/deletion-requests', checkRole('ADMIN'), getDeletionRequests);
 // Get all listings
 router.get('/', getAllListings);
 router.get('/me', getMyListings);
+router.get('/admin/individualUser', checkRole('ADMIN'), getMyListingsAdmin);
 
 // Get a single listing by ID
 router.get('/:id', getListingById);
 router.patch('/:id/images', multerUpload.array('photos', 5), updateListingImages);
 // Create a new listing (admin or user)
-router.use(checkUserType('SERVICE_PROVIDER'));
 router.post('/', multerUpload.array('photos', 5), createListing);
 
 // Update a listing (admin or user)

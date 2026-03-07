@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: PropsWithChildren) => {
   const register = (formData: FormData) => {
     return new Promise((resolve, reject) => {
       axios
-        .post('/auth/register', formData)
+        .post('/auth/register', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
         .then(({ data: { data: accountData, token: accessToken } }) => {
           setAccount(accountData);
           setToken(accessToken);

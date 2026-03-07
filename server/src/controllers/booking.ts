@@ -247,6 +247,8 @@ export const getBookingsByListingId: RequestHandler = async (req, res, next) => 
 };
 
 // Get all bookings by customer ID
+// 1. Get bookings for the authenticated customer
+// 1. Get bookings for the authenticated customer
 export const getBookingsByCustomerId: RequestHandler = async (req, res, next) => {
   try {
     const customerId = req.auth?.uid;
@@ -257,10 +259,28 @@ export const getBookingsByCustomerId: RequestHandler = async (req, res, next) =>
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
     const skip = (page - 1) * limit;
+    const idQuery = (req.query.id as string)?.trim();
+    const status = (req.query.status as string)?.trim();
+
+    const query: any = { customerId };
+
+    if (status && (Object.values(BookingStatusEnum) as string[]).includes(status)) {
+      query.status = status;
+    }
+
+    if (idQuery) {
+      query.$expr = {
+        $regexMatch: {
+          input: { $substr: [{ $toString: '$_id' }, 18, 6] },
+          regex: idQuery,
+          options: 'i',
+        },
+      };
+    }
 
     const [bookings, total] = await Promise.all([
-      Booking.find({ customerId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
-      Booking.countDocuments({ customerId }),
+      Booking.find(query).sort({ scheduledDate: -1 }).skip(skip).limit(limit),
+      Booking.countDocuments(query),
     ]);
 
     res.status(200).json({
@@ -276,6 +296,109 @@ export const getBookingsByCustomerId: RequestHandler = async (req, res, next) =>
   }
 };
 
+// 2. Get bookings for a customer (admin access)
+export const getBookingsByCustomerIdAdmin: RequestHandler = async (req, res, next) => {
+  try {
+    const customerId = req.query.userId;
+    if (!customerId) {
+      return next({ statusCode: 401, message: 'Unauthorized' });
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+    const idQuery = (req.query.id as string)?.trim();
+    const status = (req.query.status as string)?.trim();
+
+    const query: any = { customerId };
+
+    if (status && (Object.values(BookingStatusEnum) as string[]).includes(status)) {
+      query.status = status;
+    }
+
+    if (idQuery) {
+      query.$expr = {
+        $regexMatch: {
+          input: { $substr: [{ $toString: '$_id' }, 18, 6] },
+          regex: idQuery,
+          options: 'i',
+        },
+      };
+    }
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query).sort({ scheduledDate: -1 }).skip(skip).limit(limit),
+      Booking.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      message: 'Bookings fetched',
+      count: bookings.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 3. Get bookings for the authenticated service provider
+export const getBookingsByServiceProviderId: RequestHandler = async (req, res, next) => {
+  try {
+    const serviceProviderId = req.auth?.uid;
+    if (!serviceProviderId) {
+      return next({ statusCode: 401, message: 'Unauthorized' });
+    }
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+    const idQuery = (req.query.id as string)?.trim();
+    const status = (req.query.status as string)?.trim();
+
+    const listings = await Listing.find({ userId: serviceProviderId }).select('_id').lean();
+    const listingIds = listings.map((l) => l._id);
+
+    const query: any = { listingId: { $in: listingIds } };
+
+    if (status && (Object.values(BookingStatusEnum) as string[]).includes(status)) {
+      query.status = status;
+    }
+
+    if (idQuery) {
+      query.$expr = {
+        $regexMatch: {
+          input: { $substr: [{ $toString: '$_id' }, 18, 6] },
+          regex: idQuery,
+          options: 'i',
+        },
+      };
+    }
+
+    const [bookings, total] = await Promise.all([
+      Booking.find(query)
+        .sort({ scheduledDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('listingId')
+        .populate('customerId'),
+      Booking.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      message: 'Bookings fetched',
+      count: bookings.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 export const approveReschedule: RequestHandler = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -366,40 +489,3 @@ export const approveBooking: RequestHandler = async (req, res, next) => {
 //     next(error);
 //   }
 // };
-export const getBookingsByServiceProviderId: RequestHandler = async (req, res, next) => {
-  try {
-    const serviceProviderId = req.auth?.uid;
-    if (!serviceProviderId) {
-      return next({ statusCode: 401, message: 'Unauthorized' });
-    }
-
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
-    const skip = (page - 1) * limit;
-
-    // Find all listings owned by this service provider
-    const listings = await Listing.find({ userId: serviceProviderId }).select('_id');
-    const listingIds = listings.map((l) => l._id);
-
-    const [bookings, total] = await Promise.all([
-      Booking.find({ listingId: { $in: listingIds } })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate('listingId')
-        .populate('customerId'),
-      Booking.countDocuments({ listingId: { $in: listingIds } }),
-    ]);
-
-    res.status(200).json({
-      message: 'Bookings fetched',
-      count: bookings.length,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit),
-      data: bookings,
-    });
-  } catch (error) {
-    next(error);
-  }
-};

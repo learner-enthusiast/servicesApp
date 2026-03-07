@@ -25,7 +25,7 @@ export const createListing: RequestHandler = async (req, res, next) => {
     );
     geoLocation = {
       type: 'Point',
-      coordinates: [geoLocation.coordinates.lat, geoLocation.coordinates.lng],
+      coordinates: [geoLocation.coordinates.lng, geoLocation.coordinates.lat],
     };
     const listing = new Listing({
       name,
@@ -108,7 +108,7 @@ export const getAllListings: RequestHandler = async (req, res, next) => {
           $geoNear: {
             near: {
               type: 'Point',
-              coordinates: [parseFloat(lat), parseFloat(lng)],
+              coordinates: [parseFloat(lng), parseFloat(lat)],
             },
             distanceField: 'distanceInMeters',
             maxDistance: radiusInMeters,
@@ -244,13 +244,17 @@ export const getMyListings: RequestHandler = async (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
     const skip = (page - 1) * limit;
+    const name = (req.query.name as string)?.trim();
+
+    const query: any = { userId: new mongoose.Types.ObjectId(req.auth.uid) };
+
+    if (name) {
+      query.name = { $regex: name, $options: 'i' };
+    }
 
     const [listings, total] = await Promise.all([
-      Listing.find({ userId: new mongoose.Types.ObjectId(req.auth.uid) })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      Listing.countDocuments({ userId: new mongoose.Types.ObjectId(req.auth.uid) }),
+      Listing.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Listing.countDocuments(query),
     ]);
 
     res.status(200).json({
@@ -266,7 +270,37 @@ export const getMyListings: RequestHandler = async (req, res, next) => {
   }
 };
 
-// ...existing code...
+export const getMyListingsAdmin: RequestHandler = async (req, res, next) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.max(1, Math.min(50, parseInt(req.query.limit as string) || 10));
+    const skip = (page - 1) * limit;
+    const userId = req.query.userId as string;
+    const name = (req.query.name as string)?.trim();
+
+    const query: any = { userId: new mongoose.Types.ObjectId(userId) };
+
+    if (name) {
+      query.name = { $regex: name, $options: 'i' };
+    }
+
+    const [listings, total] = await Promise.all([
+      Listing.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Listing.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      message: 'My listings fetched',
+      count: listings.length,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: listings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 // Update listing status (by admin or listing owner)
 export const updateListingStatus: RequestHandler = async (req, res, next) => {

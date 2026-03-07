@@ -33,6 +33,8 @@ interface Review {
   stars: number;
   createdAt: string;
   userId: { username?: string; photo?: { url: string } };
+  beforePhotos: { url: string }[];
+  afterPhotos: { url: string }[];
 }
 
 // ─── Star Rating ──────────────────────────────────────────────────────────────
@@ -57,7 +59,6 @@ const StarRating: React.FC<{ value: number; size?: string }> = ({ value, size = 
 const ReviewsSection: React.FC<{ listingId: string }> = ({ listingId }) => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const fetch = async () => {
       try {
@@ -82,7 +83,7 @@ const ReviewsSection: React.FC<{ listingId: string }> = ({ listingId }) => {
   if (!reviews.length) return <p className="text-sm text-gray-400 py-2">No reviews yet.</p>;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 max-h-72 overflow-y-auto">
       {reviews.map((review) => (
         <div key={review._id} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-3">
@@ -114,7 +115,34 @@ const ReviewsSection: React.FC<{ listingId: string }> = ({ listingId }) => {
             <StarRating value={review.stars} />
           </div>
           {review.description && (
-            <p className="text-sm text-gray-600 leading-relaxed">{review.description}</p>
+            <p className="text-sm text-gray-600 leading-relaxed mb-3">{review.description}</p>
+          )}
+
+          {((review.beforePhotos && review.beforePhotos.length > 0) ||
+            (review.afterPhotos && review.afterPhotos.length > 0)) && (
+            <div className="flex gap-3 flex-wrap">
+              {review.beforePhotos?.slice(0, 2).map((photo, idx) => (
+                <div key={`before-${idx}`} className="flex flex-col items-center">
+                  <span className="text-[10px] text-gray-400 mb-1">Before</span>
+                  <img
+                    src={photo.url}
+                    alt="before"
+                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                  />
+                </div>
+              ))}
+
+              {review.afterPhotos?.slice(0, 2).map((photo, idx) => (
+                <div key={`after-${idx}`} className="flex flex-col items-center">
+                  <span className="text-[10px] text-gray-400 mb-1">After</span>
+                  <img
+                    src={photo.url}
+                    alt="after"
+                    className="w-16 h-16 object-cover rounded-lg border border-gray-200"
+                  />
+                </div>
+              ))}
+            </div>
           )}
         </div>
       ))}
@@ -246,7 +274,7 @@ const ListingDetail: React.FC = () => {
 
   if (error || !listing)
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
+      <div className="flex justify-center items-center min-h-[60vh] max-w-[1280px]">
         <div className="bg-red-50 border border-red-200 text-red-700 px-5 py-4 rounded-xl text-sm font-medium">
           {error || 'Listing not found'}
         </div>
@@ -257,7 +285,7 @@ const ListingDetail: React.FC = () => {
   const hasRatings = listing.ratings != null && listing.ratings > 0;
 
   return (
-    <div className="bg-gray-50 min-h-screen mt-4">
+    <div className="bg-gray-50 min-h-screen mt-4 max-w-[1280px]">
       <main className="mx-auto px-4 py-10">
         <div className="mb-7">
           {editMode ? (
@@ -317,11 +345,13 @@ const ListingDetail: React.FC = () => {
                     clipRule="evenodd"
                   />
                 </svg>
-                {addressLoading ? (
-                  <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  addressName
-                )}
+                <div className="max-w-52 overflow-hidden text-ellipsis whitespace-nowrap">
+                  {addressLoading ? (
+                    <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    addressName
+                  )}
+                </div>
               </span>
             )}
 
@@ -411,7 +441,7 @@ const ListingDetail: React.FC = () => {
                       setLocationQuery(e.target.value);
                       debouncedFetch(e.target.value);
                     }}
-                    className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="max-w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   {showLocationDropdown && locationOptions.length > 0 && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 overflow-hidden">

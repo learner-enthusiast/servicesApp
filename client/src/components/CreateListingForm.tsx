@@ -2,7 +2,8 @@ import React, { useState, useMemo } from 'react';
 import debounce from 'lodash.debounce';
 
 import { ServiceTypeEnum } from 'utils/enum';
-import { createListing, getPlaceSuggestions } from 'utils/api';
+import { createListing, getPlaceSuggestions, suggestDescription, suggestPricing } from 'utils/api';
+import { useNavigationStore } from 'store/useNavigationStore';
 
 const MAX_PHOTOS = 5;
 
@@ -16,6 +17,17 @@ export default function CreateListingForm() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // AI suggestion states
+  const [descSuggestions, setDescSuggestions] = useState<string[]>([]);
+  const [showDescSuggestions, setShowDescSuggestions] = useState(false);
+  const [loadingDesc, setLoadingDesc] = useState(false);
+
+  const [pricingSuggestions, setPricingSuggestions] = useState<
+    { tier: string; price: number; reason: string }[]
+  >([]);
+  const [showPricingSuggestions, setShowPricingSuggestions] = useState(false);
+  const [loadingPricing, setLoadingPricing] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -39,6 +51,9 @@ export default function CreateListingForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    // Hide suggestions when user manually edits
+    if (e.target.name === 'description') setShowDescSuggestions(false);
+    if (e.target.name === 'price') setShowPricingSuggestions(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +72,55 @@ export default function CreateListingForm() {
     setPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // --- AI: Suggest Descriptions ---
+  const handleSuggestDescription = async () => {
+    if (!form.serviceType) return;
+    try {
+      setLoadingDesc(true);
+      setShowDescSuggestions(false);
+      const suggestions = await suggestDescription({
+        serviceType: form.serviceType,
+        location: locationQuery || undefined,
+      });
+      setDescSuggestions(suggestions);
+      setShowDescSuggestions(true);
+    } catch (err) {
+      console.error('Failed to fetch description suggestions:', err);
+    } finally {
+      setLoadingDesc(false);
+    }
+  };
+
+  const applyDescSuggestion = (desc: string) => {
+    setForm((prev) => ({ ...prev, description: desc }));
+    setShowDescSuggestions(false);
+  };
+  const handleSuggestPricing = async () => {
+    if (!form.serviceType) return;
+    try {
+      setLoadingPricing(true);
+      setShowPricingSuggestions(false);
+      const data = await suggestPricing({
+        serviceType: form.serviceType,
+        location: locationQuery || undefined,
+        lat: form.lat ? Number(form.lat) : undefined,
+        lng: form.lng ? Number(form.lng) : undefined,
+        radiusKm: 10,
+      });
+      setPricingSuggestions(data.suggestions);
+      setShowPricingSuggestions(true);
+    } catch (err) {
+      console.error('Failed to fetch pricing suggestions:', err);
+    } finally {
+      setLoadingPricing(false);
+    }
+  };
+
+  const applyPricingSuggestion = (price: number) => {
+    setForm((prev) => ({ ...prev, price: String(price) }));
+    setShowPricingSuggestions(false);
+  };
+  const { setCurrentTab } = useNavigationStore();
   const isDisabled =
     submitting ||
     !form.name ||
@@ -85,13 +149,19 @@ export default function CreateListingForm() {
       setPhotos([]);
       setPreviews([]);
       setLocationQuery('');
+      setDescSuggestions([]);
+      setPricingSuggestions([]);
       alert('Listing created');
+      setCurrentTab('EDIT_LISTINGS');
     } catch (err) {
       console.error(err);
     } finally {
       setSubmitting(false);
     }
   };
+
+  const canSuggestDesc = !!form.serviceType;
+  const canSuggestPrice = !!form.serviceType;
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 w-full max-w-lg">
@@ -108,42 +178,235 @@ export default function CreateListingForm() {
           className={inputCls}
         />
 
-        {/* Description */}
-        <textarea
-          name="description"
-          value={form.description}
-          onChange={handleChange}
-          placeholder="Description"
-          rows={3}
-          className={`${inputCls} resize-none`}
-        />
+        {/* Description + AI Suggest */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm font-medium text-gray-700">Description</span>
+            <button
+              type="button"
+              onClick={handleSuggestDescription}
+              disabled={!canSuggestDesc || loadingDesc}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+              title={!canSuggestDesc ? 'Select a service type first' : 'Generate AI suggestions'}
+            >
+              {loadingDesc ? (
+                <>
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
+                  </svg>
+                  AI Suggest
+                </>
+              )}
+            </button>
+          </div>
+
+          <textarea
+            name="description"
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Description"
+            rows={3}
+            className={`${inputCls} resize-none`}
+          />
+
+          {/* Description suggestions */}
+          {showDescSuggestions && descSuggestions.length > 0 && (
+            <div className="mt-2 border border-blue-100 rounded-lg overflow-hidden bg-blue-50">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-blue-100">
+                <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                  AI Suggestions — click to apply
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowDescSuggestions(false)}
+                  className="text-blue-400 hover:text-blue-600"
+                >
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+              {descSuggestions.map((desc, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => applyDescSuggestion(desc)}
+                  className="w-full text-left px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-100 border-b border-blue-100 last:border-0 transition-colors"
+                >
+                  <span className="text-blue-500 font-semibold text-xs mr-1.5">{i + 1}.</span>
+                  {desc}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Price + Service Type */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="number"
-            name="price"
-            value={form.price}
-            onChange={handleChange}
-            placeholder="Price"
-            className={`${inputCls} flex-1`}
-          />
-          <select
-            name="serviceType"
-            value={form.serviceType}
-            onChange={handleChange}
-            className={`${inputCls} flex-1`}
-          >
-            <option value="" disabled hidden>
-              Service Type
-            </option>
-            {Object.values(ServiceTypeEnum).map((type) => (
-              <option key={type} value={type}>
-                {type}
+          {/* Price with AI suggest */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-sm font-medium text-gray-700">Price (₹)</span>
+              <button
+                type="button"
+                onClick={handleSuggestPricing}
+                disabled={!canSuggestPrice || loadingPricing}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                title={
+                  !canSuggestPrice ? 'Select a service type first' : 'Get AI pricing suggestions'
+                }
+              >
+                {loadingPricing ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13 10V3L4 14h7v7l9-11h-7z"
+                      />
+                    </svg>
+                    AI Suggest
+                  </>
+                )}
+              </button>
+            </div>
+            <input
+              type="number"
+              name="price"
+              value={form.price}
+              onChange={handleChange}
+              placeholder="Price"
+              className={inputCls}
+            />
+          </div>
+
+          <div className="flex-1 sm:self-end">
+            <select
+              name="serviceType"
+              value={form.serviceType}
+              onChange={handleChange}
+              className={inputCls}
+            >
+              <option value="" disabled hidden>
+                Service Type
               </option>
-            ))}
-          </select>
+              {Object.values(ServiceTypeEnum).map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+
+        {/* Pricing suggestions */}
+        {showPricingSuggestions && pricingSuggestions.length > 0 && (
+          <div className="border border-blue-100 rounded-lg overflow-hidden bg-blue-50">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-blue-100">
+              <span className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                AI Pricing — click to apply
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPricingSuggestions(false)}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="divide-y divide-blue-100">
+              {pricingSuggestions.map((s) => (
+                <button
+                  key={s.tier}
+                  type="button"
+                  onClick={() => applyPricingSuggestion(s.price)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-blue-100 transition-colors text-left group"
+                >
+                  <div>
+                    <span
+                      className={`text-xs font-semibold mr-2 px-1.5 py-0.5 rounded ${
+                        s.tier === 'Budget'
+                          ? 'bg-green-100 text-green-700'
+                          : s.tier === 'Standard'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-purple-100 text-purple-700'
+                      }`}
+                    >
+                      {s.tier}
+                    </span>
+                    <span className="text-xs text-gray-500">{s.reason}</span>
+                  </div>
+                  <span className="text-sm font-bold text-gray-800 ml-3 shrink-0 group-hover:text-blue-700">
+                    ₹{s.price}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Location Autocomplete */}
         <div className="relative">
@@ -192,7 +455,6 @@ export default function CreateListingForm() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {/* Previews */}
             {previews.map((src, index) => (
               <div
                 key={index}
@@ -224,7 +486,6 @@ export default function CreateListingForm() {
               </div>
             ))}
 
-            {/* Add button */}
             {photos.length < MAX_PHOTOS && (
               <label className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-colors cursor-pointer flex-shrink-0">
                 <svg className="w-5 h-5 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

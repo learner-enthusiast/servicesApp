@@ -108,7 +108,7 @@ const ListingCard: React.FC<Props> = ({
 
             {distanceInMeters !== undefined && (
               <Chip
-                label={`${distanceInMeters}m away`}
+                label={`${distanceInMeters.toFixed(2)}m away`}
                 size="small"
                 sx={{
                   mt: 1,

@@ -1,11 +1,40 @@
 import { RequestHandler } from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import Listing from '../models/Listings';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+// --- Gemini setup ---
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-// Suggest description for a listing
+// --- OpenAI setup ---
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+
+// --- Unified AI text generator with Gemini → OpenAI fallback ---
+async function generateText(prompt: string): Promise<string> {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+    });
+    return response.text;
+  } catch (geminiError) {
+    console.warn('[AI] Gemini failed, falling back to OpenAI:', (geminiError as Error).message);
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+    });
+    return completion.choices[0]?.message?.content ?? '';
+  } catch (openaiError) {
+    console.error('[AI] OpenAI also failed:', (openaiError as Error).message);
+    throw new Error('Both Gemini and OpenAI failed to generate a response');
+  }
+}
+
+// --- Suggest description for a listing ---
 export const suggestDescription: RequestHandler = async (req, res, next) => {
   try {
     const { serviceType, location } = req.body;
@@ -27,10 +56,8 @@ Each description should:
 Return a JSON array of 3 strings. Only return valid JSON, no markdown or explanation.
 Example: ["Description 1", "Description 2", "Description 3"]`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const text = await generateText(prompt);
 
-    // Parse JSON from response
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       return next({ statusCode: 500, message: 'Failed to parse AI response' });
@@ -47,7 +74,7 @@ Example: ["Description 1", "Description 2", "Description 3"]`;
   }
 };
 
-// Suggest pricing based on competitors
+// --- Suggest pricing based on competitors ---
 export const suggestPricing: RequestHandler = async (req, res, next) => {
   try {
     const { serviceType, location, lat, lng, radiusKm } = req.body;
@@ -56,7 +83,6 @@ export const suggestPricing: RequestHandler = async (req, res, next) => {
       return next({ statusCode: 400, message: 'serviceType is required' });
     }
 
-    // Fetch competitor listings from DB
     let competitors: any[] = [];
 
     if (lat && lng && radiusKm) {
@@ -123,10 +149,8 @@ Return a JSON object with this exact structure, no markdown or explanation:
   ]
 }`;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const text = await generateText(prompt);
 
-    // Parse JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return next({ statusCode: 500, message: 'Failed to parse AI response' });

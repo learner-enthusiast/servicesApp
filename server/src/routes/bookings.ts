@@ -11,6 +11,7 @@ import {
   approveBooking,
   getBookingsByServiceProviderId,
   approveReschedule,
+  getBookingsByCustomerIdAdmin,
 } from '../controllers/booking';
 import checkBearerToken from '../middlewares/check-bearer-token';
 import checkRole from '../middlewares/check-roles';
@@ -26,6 +27,7 @@ router.get('/', getAllBookings);
 
 // Get bookings by customer (authenticated user's own bookings)
 router.get('/my-bookings', getBookingsByCustomerId);
+router.get('/user-bookings', checkRole('ADMIN'), getBookingsByCustomerIdAdmin);
 
 // Get bookings by listing ID
 router.get('/listing/:listingId', getBookingsByListingId);

@@ -1,4 +1,4 @@
-import React, { Fragment, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import { useModalStore } from 'store/useModalStore';
 import { useAuth } from 'contexts/AuthContext';
 import OnlineIndicator from 'components/OnlineIndicator';
@@ -35,6 +35,13 @@ const Header: React.FC = () => {
   const isCustomer = !isAdmin && account?.type === UserTypeEnum.CUSTOMER;
   const isServiceProvider = !isAdmin && account?.type === UserTypeEnum.SERVICE_PROVIDER;
 
+  useEffect(() => {
+    if (!account) return;
+
+    if (isCustomer) setCurrentTab('SEARCH');
+    else if (isServiceProvider) setCurrentTab('EDIT_LISTINGS');
+    else if (isAdmin) setCurrentTab('OVERVIEW');
+  }, [account, isCustomer, isServiceProvider, isAdmin, setCurrentTab]);
   const tabs = isCustomer
     ? CUSTOMER_TABS
     : isServiceProvider
@@ -56,7 +63,7 @@ const Header: React.FC = () => {
     setCurrentModal('REGISTER');
     setPopover(false);
   };
-
+  console.log(account);
   return (
     <header className="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3 shadow-sm w-full">
       {/* Logo */}
