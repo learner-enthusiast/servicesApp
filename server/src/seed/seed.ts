@@ -64,7 +64,7 @@ const CUSTOMERS = [
 
 /* Listings */
 
-const LISTINGS_DATA = generateListings(5000);
+const LISTINGS_DATA = generateListings(75000);
 
 /* Reviews */
 

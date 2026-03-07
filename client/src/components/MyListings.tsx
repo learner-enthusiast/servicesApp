@@ -156,7 +156,7 @@ const MyListings: React.FC<MyListingsProps> = ({ userId }) => {
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-3 bg-white">
+              <div className="flex flex-col gap-3 bg-white p-3">
                 {myListings.map((listing) => (
                   <div key={listing._id} className="cursor-pointer">
                     <ListingCard
