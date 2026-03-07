@@ -1,4 +1,4 @@
-# 🏠 BookLocal — Local Services Marketplace
+# BookLocal — Local Services Marketplace
 
 > **Find Trusted Local Services Near You.**
 
@@ -6,24 +6,24 @@ A full-stack MERN application that connects **customers** with **local service p
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
-- [Problem Statement](#-problem-statement)
-- [Solution](#-solution)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Features](#-features)
-- [Screenshots](#-screenshots)
-- [API Documentation](#-api-documentation)
-- [Database Schema](#-database-schema)
-- [Getting Started](#-getting-started)
-- [Environment Variables](#-environment-variables)
-- [Project Structure](#-project-structure)
-- [Team](#-team)
+- [Problem Statement](#problem-statement)
+- [Solution](#solution)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [API Documentation](#api-documentation)
+- [Database Schema](#database-schema)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Project Structure](#project-structure)
+- [Team](#team)
 
 ---
 
-## 🎯 Problem Statement
+## Problem Statement
 
 Finding reliable local service providers (plumbers, electricians, cleaners, tutors, etc.) is often a frustrating experience — scattered across WhatsApp groups, word-of-mouth, and unreliable directories. Customers lack:
 
@@ -38,21 +38,21 @@ Service providers, on the other hand, struggle with:
 - **Booking management** and scheduling
 - **Competitive pricing** insights
 
-## 💡 Solution
+## Solution
 
 **BookLocal** is a marketplace that solves both sides:
 
-| For Customers                             | For Service Providers                  |
-| ----------------------------------------- | -------------------------------------- |
-| 🔍 Search services by type & location     | 📋 Create and manage service listings  |
-| 📍 Geolocation-based nearby discovery     | 🤖 AI-generated descriptions & pricing |
-| 📅 Book, reschedule, or cancel with ease  | 📊 View and manage incoming bookings   |
-| ⭐ Leave reviews with before/after photos | 🖼️ Showcase work via listing photos    |
-| 🗺️ Mapbox-powered location search         | 📈 Competitive pricing insights        |
+| For Customers                          | For Service Providers               |
+| -------------------------------------- | ----------------------------------- |
+| Search services by type & location     | Create and manage service listings  |
+| Geolocation-based nearby discovery     | AI-generated descriptions & pricing |
+| Book, reschedule, or cancel with ease  | View and manage incoming bookings   |
+| Leave reviews with before/after photos | Showcase work via listing photos    |
+| Mapbox-powered location search         | Competitive pricing insights        |
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 
@@ -84,7 +84,7 @@ Service providers, on the other hand, struggle with:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────┐         ┌─────────────────────────────┐
@@ -116,9 +116,9 @@ Service providers, on the other hand, struggle with:
 
 ---
 
-## ✨ Features
+## Features
 
-### 🔐 Authentication & Authorization
+### Authentication & Authorization
 
 - JWT-based authentication with bearer token
 - Role-based access control: **User** and **Admin**
@@ -126,7 +126,7 @@ Service providers, on the other hand, struggle with:
 - Protected routes on both frontend and backend
 - Token-based auto-login
 
-### 📋 Listings (Service Providers)
+### Listings (Service Providers)
 
 - Create listings with name, description, price, service type, location, and photos
 - 40+ service categories (Plumbing, Electrical, Cleaning, Salon, Photography, etc.)
@@ -136,14 +136,14 @@ Service providers, on the other hand, struggle with:
 - **Geospatial indexing** (2dsphere) for location-based queries
 - View own listings with pagination
 
-### 📍 Location & Geosearch
+### Location & Geosearch
 
 - **Mapbox-powered** place autocomplete search
 - Reverse geocoding (coordinates → address)
 - Nearby service discovery using MongoDB `$geoNear` aggregation
 - Location-aware search with configurable radius
 
-### 📅 Bookings (Customers)
+### Bookings (Customers)
 
 - Book a service with a preferred scheduled date
 - Booking status lifecycle:
@@ -158,7 +158,7 @@ Service providers, on the other hand, struggle with:
 - View booking details with listing name via aggregation pipeline
 - Service providers can approve, confirm, and complete bookings
 
-### ⭐ Reviews & Ratings
+### Reviews & Ratings
 
 - Customers can leave reviews after booking completion
 - Star rating (1–5) with description
@@ -167,12 +167,12 @@ Service providers, on the other hand, struggle with:
 - Reviews aggregated with user details (username, photo) via MongoDB pipeline
 - Listing-level review fetching by `listingId`
 
-### 🤖 AI-Powered Features (Google Gemini)
+### AI-Powered Features (Google Gemini)
 
 - **Description Suggestions**: Generate 3 professional, SEO-friendly listing descriptions based on service type and location
 - **Pricing Suggestions**: AI analyzes competitor listings in the area and suggests Budget / Standard / Premium pricing tiers with reasoning
 
-### 👤 Role-Based Dashboards
+### Role-Based Dashboards
 
 | Role                 | Dashboard Features                                        |
 | -------------------- | --------------------------------------------------------- |
@@ -182,7 +182,7 @@ Service providers, on the other hand, struggle with:
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
 > _Add screenshots here_
 
@@ -196,7 +196,7 @@ Service providers, on the other hand, struggle with:
 
 ---
 
-## 📡 API Documentation
+## API Documentation
 
 ### Base URL
 
@@ -208,70 +208,70 @@ http://localhost:3001
 
 | Method | Endpoint                 | Description            | Auth |
 | ------ | ------------------------ | ---------------------- | ---- |
-| `POST` | `/auth/register`         | Register a new account | ❌   |
-| `POST` | `/auth/login`            | Login with credentials | ❌   |
-| `GET`  | `/auth/login-with-token` | Auto-login with JWT    | ✅   |
+| `POST` | `/auth/register`         | Register a new account | No   |
+| `POST` | `/auth/login`            | Login with credentials | No   |
+| `GET`  | `/auth/login-with-token` | Auto-login with JWT    | Yes  |
 
 ### Listings
 
 | Method  | Endpoint                      | Description                     | Auth | Role             |
 | ------- | ----------------------------- | ------------------------------- | ---- | ---------------- |
-| `GET`   | `/listing`                    | Get all listings (with filters) | ✅   | Any              |
-| `GET`   | `/listing/me`                 | Get my listings                 | ✅   | Service Provider |
-| `GET`   | `/listing/:id`                | Get listing by ID               | ✅   | Any              |
-| `POST`  | `/listing`                    | Create listing (with photos)    | ✅   | Service Provider |
-| `PUT`   | `/listing/:id`                | Update listing                  | ✅   | Service Provider |
-| `PATCH` | `/listing/:id/images`         | Update listing images           | ✅   | Any              |
-| `PATCH` | `/listing/:id/status`         | Toggle active/inactive          | ✅   | Service Provider |
-| `PATCH` | `/listing/:id/request-delete` | Request deletion                | ✅   | Service Provider |
-| `PATCH` | `/listing/:id/review-delete`  | Approve/reject deletion         | ✅   | Admin            |
-| `GET`   | `/listing/deletion-requests`  | Get all deletion requests       | ✅   | Admin            |
+| `GET`   | `/listing`                    | Get all listings (with filters) | Yes  | Any              |
+| `GET`   | `/listing/me`                 | Get my listings                 | Yes  | Service Provider |
+| `GET`   | `/listing/:id`                | Get listing by ID               | Yes  | Any              |
+| `POST`  | `/listing`                    | Create listing (with photos)    | Yes  | Service Provider |
+| `PUT`   | `/listing/:id`                | Update listing                  | Yes  | Service Provider |
+| `PATCH` | `/listing/:id/images`         | Update listing images           | Yes  | Any              |
+| `PATCH` | `/listing/:id/status`         | Toggle active/inactive          | Yes  | Service Provider |
+| `PATCH` | `/listing/:id/request-delete` | Request deletion                | Yes  | Service Provider |
+| `PATCH` | `/listing/:id/review-delete`  | Approve/reject deletion         | Yes  | Admin            |
+| `GET`   | `/listing/deletion-requests`  | Get all deletion requests       | Yes  | Admin            |
 
 ### Bookings
 
 | Method  | Endpoint                          | Description                | Auth | Role                |
 | ------- | --------------------------------- | -------------------------- | ---- | ------------------- |
-| `POST`  | `/booking`                        | Create a booking           | ✅   | Customer            |
-| `GET`   | `/booking/me`                     | Get my bookings (customer) | ✅   | Customer            |
-| `GET`   | `/booking/sp/me`                  | Get my bookings (provider) | ✅   | Service Provider    |
-| `GET`   | `/booking/:id`                    | Get booking by ID          | ✅   | Any                 |
-| `PATCH` | `/booking/:id/cancel`             | Cancel a booking           | ✅   | Customer / Provider |
-| `PATCH` | `/booking/:id/approve`            | Approve a booking          | ✅   | Service Provider    |
-| `PATCH` | `/booking/:id/reschedule`         | Reschedule a booking       | ✅   | Customer            |
-| `PATCH` | `/booking/:id/approve-reschedule` | Approve reschedule         | ✅   | Service Provider    |
+| `POST`  | `/booking`                        | Create a booking           | Yes  | Customer            |
+| `GET`   | `/booking/me`                     | Get my bookings (customer) | Yes  | Customer            |
+| `GET`   | `/booking/sp/me`                  | Get my bookings (provider) | Yes  | Service Provider    |
+| `GET`   | `/booking/:id`                    | Get booking by ID          | Yes  | Any                 |
+| `PATCH` | `/booking/:id/cancel`             | Cancel a booking           | Yes  | Customer / Provider |
+| `PATCH` | `/booking/:id/approve`            | Approve a booking          | Yes  | Service Provider    |
+| `PATCH` | `/booking/:id/reschedule`         | Reschedule a booking       | Yes  | Customer            |
+| `PATCH` | `/booking/:id/approve-reschedule` | Approve reschedule         | Yes  | Service Provider    |
 
 ### Reviews
 
 | Method   | Endpoint                           | Description                  | Auth | Role     |
 | -------- | ---------------------------------- | ---------------------------- | ---- | -------- |
-| `GET`    | `/review`                          | Get all reviews              | ✅   | Admin    |
-| `GET`    | `/review/:id`                      | Get review by ID             | ✅   | Any      |
-| `GET`    | `/review/listing/:listingId`       | Get reviews by listing       | ✅   | Any      |
-| `POST`   | `/review`                          | Create a review              | ✅   | Customer |
-| `PUT`    | `/review/:id`                      | Update a review              | ✅   | Customer |
-| `DELETE` | `/review/:id`                      | Delete a review              | ✅   | Admin    |
-| `POST`   | `/review/:id/before-photos`        | Upload before photos (max 2) | ✅   | Customer |
-| `POST`   | `/review/:id/after-photos`         | Upload after photos (max 2)  | ✅   | Customer |
-| `PATCH`  | `/review/:id/before-photos/:index` | Replace a before photo       | ✅   | Customer |
-| `PATCH`  | `/review/:id/after-photos/:index`  | Replace an after photo       | ✅   | Customer |
+| `GET`    | `/review`                          | Get all reviews              | Yes  | Admin    |
+| `GET`    | `/review/:id`                      | Get review by ID             | Yes  | Any      |
+| `GET`    | `/review/listing/:listingId`       | Get reviews by listing       | Yes  | Any      |
+| `POST`   | `/review`                          | Create a review              | Yes  | Customer |
+| `PUT`    | `/review/:id`                      | Update a review              | Yes  | Customer |
+| `DELETE` | `/review/:id`                      | Delete a review              | Yes  | Admin    |
+| `POST`   | `/review/:id/before-photos`        | Upload before photos (max 2) | Yes  | Customer |
+| `POST`   | `/review/:id/after-photos`         | Upload after photos (max 2)  | Yes  | Customer |
+| `PATCH`  | `/review/:id/before-photos/:index` | Replace a before photo       | Yes  | Customer |
+| `PATCH`  | `/review/:id/after-photos/:index`  | Replace an after photo       | Yes  | Customer |
 
 ### Location
 
 | Method | Endpoint                | Description                 | Auth |
 | ------ | ----------------------- | --------------------------- | ---- |
-| `GET`  | `/location/suggestions` | Place autocomplete (Mapbox) | ✅   |
-| `GET`  | `/location/reverse`     | Reverse geocode coordinates | ✅   |
+| `GET`  | `/location/suggestions` | Place autocomplete (Mapbox) | Yes  |
+| `GET`  | `/location/reverse`     | Reverse geocode coordinates | Yes  |
 
 ### AI
 
 | Method | Endpoint                      | Description             | Auth |
 | ------ | ----------------------------- | ----------------------- | ---- |
-| `POST` | `/api/ai/suggest-description` | AI listing descriptions | ✅   |
-| `POST` | `/api/ai/suggest-pricing`     | AI pricing suggestions  | ✅   |
+| `POST` | `/api/ai/suggest-description` | AI listing descriptions | Yes  |
+| `POST` | `/api/ai/suggest-pricing`     | AI pricing suggestions  | Yes  |
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 ```
 ┌──────────────┐       ┌───────────────┐       ┌──────────────┐
@@ -302,12 +302,12 @@ http://localhost:3001
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- **Node.js** ≥ 18.x
-- **npm** ≥ 9.x
+- **Node.js** >= 18.x
+- **npm** >= 9.x
 - **MongoDB** (Atlas or local Community Server)
 - **Cloudinary** account (for image uploads)
 - **Mapbox** account (for location services)
@@ -343,12 +343,12 @@ cp server/.env.example server/.env
 # Terminal 1 — Start the server
 cd server
 npm run dev
-# ✅ Server is listening on port: 3001
+# Server is listening on port: 3001
 
 # Terminal 2 — Start the client
 cd client
 npm run dev
-# ✅ Client is running on http://localhost:3000
+# Client is running on http://localhost:3000
 ```
 
 ### Building for Production
@@ -367,7 +367,7 @@ npm start
 
 ---
 
-## 🔑 Environment Variables
+## Environment Variables
 
 Create a `.env` file in the `server/` directory:
 
@@ -397,7 +397,7 @@ GEMINI_API_KEY=your_gemini_api_key
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 booklocal/
@@ -490,23 +490,23 @@ booklocal/
 
 ---
 
-## 🧪 Service Categories
+## Service Categories
 
 BookLocal supports **40+ service types** across 7 categories:
 
-| Category                 | Services                                                                                                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 🏠 **Home Services**     | Plumbing, Electrical, Carpentry, Painting, Cleaning, Appliance Repair, Pest Control, AC Service, Geyser Repair, Chimney Cleaning, Water Purifier, Inverter Battery |
-| 💇 **Personal Care**     | Men's Salon, Women's Salon, Massage Therapy, Mehendi                                                                                                               |
-| 🏥 **Health & Wellness** | Physiotherapy, Doctor Home Visit, Nurse/Caretaker, Dietician                                                                                                       |
-| 📚 **Education**         | Home Tutor, Music Classes, Spoken English                                                                                                                          |
-| 🚗 **Vehicles**          | Car Washing, Bike Service, Puncture Repair, Driving Lessons                                                                                                        |
-| 🎉 **Events & Misc**     | Photography, Catering, Tent & Decoration, DJ/Sound, Packers & Movers, Courier Pickup                                                                               |
-| 🔨 **Construction**      | Tiling, False Ceiling, Waterproofing, Interior Design                                                                                                              |
+| Category              | Services                                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Home Services**     | Plumbing, Electrical, Carpentry, Painting, Cleaning, Appliance Repair, Pest Control, AC Service, Geyser Repair, Chimney Cleaning, Water Purifier, Inverter Battery |
+| **Personal Care**     | Men's Salon, Women's Salon, Massage Therapy, Mehendi                                                                                                               |
+| **Health & Wellness** | Physiotherapy, Doctor Home Visit, Nurse/Caretaker, Dietician                                                                                                       |
+| **Education**         | Home Tutor, Music Classes, Spoken English                                                                                                                          |
+| **Vehicles**          | Car Washing, Bike Service, Puncture Repair, Driving Lessons                                                                                                        |
+| **Events & Misc**     | Photography, Catering, Tent & Decoration, DJ/Sound, Packers & Movers, Courier Pickup                                                                               |
+| **Construction**      | Tiling, False Ceiling, Waterproofing, Interior Design                                                                                                              |
 
 ---
 
-## 🤖 AI Features Deep Dive
+## AI Features Deep Dive
 
 ### Description Generator
 
@@ -523,7 +523,7 @@ BookLocal supports **40+ service types** across 7 categories:
 
 ---
 
-## 👥 Team
+## Team
 
 | Name          | Role                 | GitHub                                         |
 | ------------- | -------------------- | ---------------------------------------------- |
@@ -533,12 +533,12 @@ BookLocal supports **40+ service types** across 7 categories:
 
 ---
 
-## 📄 License
+## License
 
 This project was built for **[Hackathon Name]** — March 2026.
 
 ---
 
 <p align="center">
-  Built with ❤️ using MERN Stack + AI
+  Built with love using MERN Stack + AI
 </p>

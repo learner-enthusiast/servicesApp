@@ -81,7 +81,7 @@ const MyListings: React.FC<MyListingsProps> = ({ userId }) => {
   // if (loading) return <Loading />;
 
   return (
-    <div className="flex flex-col justify-center items-center w-4xl bg-white px-2 pt-2">
+    <div className="flex flex-col justify-center items-center w-4xl  px-2 pt-2">
       {/* Search */}
       <div className="relative mb-4 max-w-xs">
         <svg
@@ -156,7 +156,7 @@ const MyListings: React.FC<MyListingsProps> = ({ userId }) => {
             </div>
           ) : (
             <>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 bg-white">
                 {myListings.map((listing) => (
                   <div key={listing._id} className="cursor-pointer">
                     <ListingCard

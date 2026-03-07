@@ -43,8 +43,13 @@ const AuthModal: React.FC<Props> = () => {
       [name]: files ? files[0] : value,
     }));
   };
-  console.log(formData);
+
+  const isSubmitButtonDisabled = isRegisterMode
+    ? !formData.username || !formData.password || !formData.image
+    : !formData.username || !formData.password;
+
   const clickSubmit = async () => {
+    if (isSubmitButtonDisabled) return;
     setLoading(true);
     setError('');
 
@@ -58,9 +63,11 @@ const AuthModal: React.FC<Props> = () => {
     setLoading(false);
   };
 
-  const isSubmitButtonDisabled = isRegisterMode
-    ? !formData.username || !formData.password || !formData.image
-    : !formData.username || !formData.password;
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      clickSubmit();
+    }
+  };
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="xs" fullWidth>
@@ -91,6 +98,7 @@ const AuthModal: React.FC<Props> = () => {
             type="text"
             value={formData.username}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             variant="filled"
             fullWidth
             required
@@ -102,6 +110,7 @@ const AuthModal: React.FC<Props> = () => {
             type="password"
             value={formData.password}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             variant="filled"
             fullWidth
             required
