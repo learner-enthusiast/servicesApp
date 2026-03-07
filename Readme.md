@@ -523,19 +523,9 @@ BookLocal supports **40+ service types** across 7 categories:
 
 ---
 
-## Team
-
-| Name          | Role                 | GitHub                                         |
-| ------------- | -------------------- | ---------------------------------------------- |
-| Your Name     | Full Stack Developer | [@your-github](https://github.com/your-github) |
-| Team Member 2 | Frontend Developer   | [@member2](https://github.com/member2)         |
-| Team Member 3 | Backend Developer    | [@member3](https://github.com/member3)         |
-
----
-
 ## License
 
-This project was built for **[Hackathon Name]** — March 2026.
+This project was built for **Buildathon** — March 2026.
 
 ---
 
