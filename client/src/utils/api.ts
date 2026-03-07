@@ -192,7 +192,7 @@ export const createBooking = async (body: { listingId: string; scheduledDate: st
 
 export const getUserMyBookings = async (query: any) => {
   try {
-    const { data } = await api.get('/booking/my-bookings', { params: { query } });
+    const { data } = await api.get('/booking/my-bookings', { params: query });
 
     return data;
   } catch (error: any) {
