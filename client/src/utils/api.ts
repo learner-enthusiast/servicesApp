@@ -253,7 +253,7 @@ export const rescheduleBooking = async (id: string, params: RescheduleBookingPar
 };
 export const getService_ProviderMyBookings = async (query: any) => {
   try {
-    const { data } = await api.get('/booking/bookingsservice_provider', { params: { query } });
+    const { data } = await api.get('/booking/bookingsservice_provider', { params: query });
 
     return data;
   } catch (error: any) {
