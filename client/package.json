@@ -39,7 +39,7 @@
     "react-scripts": "5.0.1",
     "shepherd.js": "^15.2.1",
     "typescript": "^4.9.5",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
