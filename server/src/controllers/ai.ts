@@ -2,6 +2,7 @@ import { RequestHandler } from 'express';
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import Listing from '../models/Listings';
+import { dummyData } from '../utils/constants';
 
 // --- Gemini setup ---
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
@@ -170,6 +171,13 @@ Return a JSON object with this exact structure, no markdown or explanation:
 export const tailorResume: RequestHandler = async (req, res, next) => {
   try {
     const { jobs, resume } = req.body;
+    res.status(200).json({
+      message: 'Tailored resumes generated successfully',
+      total: 46,
+      failed_batches: 0,
+      data: dummyData,
+    });
+    return;
 
     if (!Array.isArray(jobs) || !resume) {
       return next({ statusCode: 400, message: 'jobs (array) and resume (text) are required' });
@@ -241,6 +249,10 @@ OUTPUT RULES:
         company: job.company,
         job_description: job.job_description,
         tailoredResume: cleanedLatex,
+        employmentType: job?.employment_type,
+        apply_url: job?.apply_url,
+        job_url: job?.job_url,
+        job_id: job?.job_id,
       };
     };
 
