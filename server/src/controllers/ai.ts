@@ -11,19 +11,19 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 // --- Unified AI text generator with Gemini → OpenAI fallback ---
 async function generateText(prompt: string): Promise<string> {
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: prompt,
-    });
-    return response.text;
-  } catch (geminiError) {
-    console.warn('[AI] Gemini failed, falling back to OpenAI:', (geminiError as Error).message);
-  }
+  // try {
+  //   const response = await ai.models.generateContent({
+  //     model: 'gemini-2.0-flash',
+  //     contents: prompt,
+  //   });
+  //   return response.text;
+  // } catch (geminiError) {
+  //   console.warn('[AI] Gemini failed, falling back to OpenAI:', (geminiError as Error).message);
+  // }
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'gpt-4.1',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
@@ -161,6 +161,174 @@ Return a JSON object with this exact structure, no markdown or explanation:
     res.status(200).json({
       message: 'Pricing suggestions generated',
       data: pricingSuggestions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const tailorResume: RequestHandler = async (req, res, next) => {
+  try {
+    const { jobs, resume } = req.body;
+
+    if (!Array.isArray(jobs) || !resume) {
+      return next({ statusCode: 400, message: 'jobs (array) and resume (text) are required' });
+    }
+
+    console.log(jobs.length);
+
+    const BATCH_SIZE = 3;
+    const DELAY_MS = 1000;
+    const MAX_RETRIES = 2;
+    const RETRY_MULTIPLIER = 3;
+
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const cleanLatex = (raw: string): string => {
+      return raw
+        .trim()
+        .replace(/^```latex\n?/, '')
+        .replace(/^```\n?/, '')
+        .replace(/```$/, '')
+        .trim();
+    };
+
+    const tailorSingleJob = async (job: any): Promise<any> => {
+      const jobDesc = job.job_description || '';
+      const jobTitle = job.job_title || 'this role';
+      const company = job.company || 'the company';
+
+      const prompt = `You are an expert resume writer and LaTeX specialist with deep knowledge of ATS optimization and recruiter preferences.
+
+TASK: Tailor the provided LaTeX resume for the specific job description below.
+
+CANDIDATE RESUME (LaTeX):
+${resume}
+
+TARGET JOB TITLE: ${jobTitle}
+TARGET COMPANY: ${company}
+
+JOB DESCRIPTION:
+${jobDesc}
+
+INSTRUCTIONS:
+1. Analyze the job description for key skills, technologies, and requirements
+2. Rewrite the resume summary to directly address this specific role and company
+3. Reorder and emphasize experiences that best match the job requirements
+4. Incorporate relevant keywords from the job description naturally throughout
+5. Keep all factual information accurate - do not fabricate any experience or skills
+6. Maintain the exact same LaTeX structure, packages, and custom commands
+7. Ensure all LaTeX commands are valid and will compile without errors in Overleaf
+8. Keep the same overall length and formatting style as the original
+
+OUTPUT RULES:
+- Output ONLY raw LaTeX code
+- Start directly with \\documentclass
+- No markdown code blocks, no backticks, no explanations
+- No text before or after the LaTeX content
+- Must be complete and compilable in Overleaf as-is`;
+
+      const aiResume = await generateText(prompt);
+      const cleanedLatex = cleanLatex(aiResume);
+
+      if (!cleanedLatex.startsWith('\\documentclass')) {
+        console.warn(`Warning: job "${jobTitle}" may have invalid LaTeX output`);
+        console.warn('Output starts with:', cleanedLatex.substring(0, 100));
+      }
+
+      return {
+        job_title: job.job_title,
+        company: job.company,
+        job_description: job.job_description,
+        tailoredResume: cleanedLatex,
+      };
+    };
+
+    const processBatchWithRetry = async (
+      batch: any[],
+      batchNumber: number,
+      totalBatches: number
+    ): Promise<{ success: boolean; results: any[]; error?: string }> => {
+      let attempt = 0;
+
+      while (attempt <= MAX_RETRIES) {
+        try {
+          if (attempt > 0) {
+            const retryDelay = DELAY_MS * RETRY_MULTIPLIER * attempt;
+            console.log(
+              `Retry attempt ${attempt}/${MAX_RETRIES} for batch ${batchNumber}. Waiting ${retryDelay}ms...`
+            );
+            await sleep(retryDelay);
+          }
+
+          console.log(
+            `Processing batch ${batchNumber} of ${totalBatches} (${batch.length} jobs) — attempt ${attempt + 1}...`
+          );
+
+          const results = await Promise.all(batch.map((job) => tailorSingleJob(job)));
+
+          console.log(`Batch ${batchNumber} completed successfully.`);
+          return { success: true, results };
+        } catch (error: any) {
+          console.error(
+            `Batch ${batchNumber} attempt ${attempt + 1} failed:`,
+            error?.message || error
+          );
+          attempt++;
+
+          if (attempt > MAX_RETRIES) {
+            console.error(
+              `Batch ${batchNumber} failed after ${MAX_RETRIES + 1} attempts. Skipping.`
+            );
+            return {
+              success: false,
+              results: [],
+              error: error?.message || 'Unknown error',
+            };
+          }
+        }
+      }
+
+      return { success: false, results: [], error: 'Max retries exceeded' };
+    };
+
+    const tailoredJobs: any[] = [];
+    const failedBatches: number[] = [];
+    const totalBatches = Math.ceil(jobs.length / BATCH_SIZE);
+
+    for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
+      const batch = jobs.slice(i, i + BATCH_SIZE);
+      const currentBatch = Math.floor(i / BATCH_SIZE) + 1;
+
+      const { success, results, error } = await processBatchWithRetry(
+        batch,
+        currentBatch,
+        totalBatches
+      );
+
+      if (success) {
+        tailoredJobs.push(...results);
+      } else {
+        failedBatches.push(currentBatch);
+        console.error(`Batch ${currentBatch} ultimately failed: ${error}`);
+      }
+
+      console.log(`Total processed so far: ${tailoredJobs.length}/${jobs.length}`);
+
+      if (i + BATCH_SIZE < jobs.length) {
+        console.log(`Waiting ${DELAY_MS}ms before next batch...`);
+        await sleep(DELAY_MS);
+      }
+    }
+
+    res.status(200).json({
+      message:
+        failedBatches.length > 0
+          ? `Completed with some failures. ${failedBatches.length} batch(es) failed.`
+          : 'Tailored resumes generated successfully',
+      total: tailoredJobs.length,
+      failed_batches: failedBatches,
+      data: tailoredJobs,
     });
   } catch (error) {
     next(error);
