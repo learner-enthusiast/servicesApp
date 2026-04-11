@@ -171,19 +171,10 @@ Return a JSON object with this exact structure, no markdown or explanation:
 export const tailorResume: RequestHandler = async (req, res, next) => {
   try {
     const { jobs, resume } = req.body;
-    res.status(200).json({
-      message: 'Tailored resumes generated successfully',
-      total: 46,
-      failed_batches: 0,
-      data: dummyData,
-    });
-    return;
 
     if (!Array.isArray(jobs) || !resume) {
       return next({ statusCode: 400, message: 'jobs (array) and resume (text) are required' });
     }
-
-    console.log(jobs.length);
 
     const BATCH_SIZE = 3;
     const DELAY_MS = 1000;
@@ -201,10 +192,147 @@ export const tailorResume: RequestHandler = async (req, res, next) => {
         .trim();
     };
 
-    const tailorSingleJob = async (job: any): Promise<any> => {
-      const jobDesc = job.job_description || '';
+    // ─── Generic batch processor ───────────────────────────────────────────────
+    const processInBatches = async <TInput, TOutput>(
+      items: TInput[],
+      processor: (item: TInput, index: number) => Promise<TOutput>,
+      label: string,
+      options?: {
+        batchSize?: number;
+        delayMs?: number;
+        maxRetries?: number;
+        retryMultiplier?: number;
+      }
+    ): Promise<{ results: (TOutput | null)[]; failedBatches: number[] }> => {
+      const batchSize = options?.batchSize ?? BATCH_SIZE;
+      const delayMs = options?.delayMs ?? DELAY_MS;
+      const maxRetries = options?.maxRetries ?? MAX_RETRIES;
+      const retryMultiplier = options?.retryMultiplier ?? RETRY_MULTIPLIER;
+
+      const totalBatches = Math.ceil(items.length / batchSize);
+      const allResults: (TOutput | null)[] = new Array(items.length).fill(null);
+      const failedBatches: number[] = [];
+
+      console.log(
+        `\n[${label}] Starting — ${items.length} item(s) across ${totalBatches} batch(es) (size: ${batchSize})`
+      );
+
+      for (let i = 0; i < items.length; i += batchSize) {
+        const batch = items.slice(i, i + batchSize);
+        const batchNumber = Math.floor(i / batchSize) + 1;
+
+        console.log(
+          `[${label}] Batch ${batchNumber}/${totalBatches} — processing ${batch.length} item(s)...`
+        );
+
+        let attempt = 0;
+        let success = false;
+
+        while (attempt <= maxRetries) {
+          if (attempt > 0) {
+            const retryDelay = delayMs * retryMultiplier * attempt;
+            console.warn(
+              `[${label}] Batch ${batchNumber}/${totalBatches} — retry ${attempt}/${maxRetries} in ${retryDelay}ms...`
+            );
+            await sleep(retryDelay);
+          }
+
+          try {
+            const batchResults = await Promise.all(batch.map((item, j) => processor(item, i + j)));
+
+            batchResults.forEach((result, j) => {
+              allResults[i + j] = result;
+            });
+
+            console.log(`[${label}] Batch ${batchNumber}/${totalBatches} — ✓ done`);
+            success = true;
+            break;
+          } catch (err: any) {
+            attempt++;
+            if (attempt > maxRetries) {
+              console.error(
+                `[${label}] Batch ${batchNumber}/${totalBatches} — ✗ failed after ${maxRetries} retries. Error: ${err?.message ?? 'Unknown error'}`
+              );
+            }
+          }
+        }
+
+        if (!success) {
+          failedBatches.push(batchNumber);
+        }
+
+        if (i + batchSize < items.length) {
+          console.log(`[${label}] Waiting ${delayMs}ms before next batch...`);
+          await sleep(delayMs);
+        }
+      }
+
+      const successCount = allResults.filter((r) => r !== null).length;
+      console.log(
+        `[${label}] Complete — ${successCount}/${items.length} succeeded, ${failedBatches.length} batch(es) failed\n`
+      );
+
+      return { results: allResults, failedBatches };
+    };
+
+    // ─── Step 1: Relevance check (batched) ────────────────────────────────────
+    const checkRelevance = async (job: any, index: number): Promise<boolean> => {
+      const jobTitle = job.job_title || 'Untitled';
+      const company = job.company || 'Unknown company';
+      console.log(`  [Relevance] Checking job #${index + 1}: "${jobTitle}" at ${company}`);
+
+      const prompt = `
+You are a career advisor and resume expert.
+
+Given the following candidate resume (in LaTeX format):
+
+${resume}
+
+And the following job description:
+
+${job.job_description || job.description || ''}
+
+Is this job relevant to the candidate's profile? 
+Respond only with a JSON object: {"verdict": true} if relevant, {"verdict": false} if not. No explanation, no markdown.
+`;
+      try {
+        const aiResponse = await generateText(prompt);
+        const verdictObj = JSON.parse(aiResponse.match(/\{[\s\S]*\}/)?.[0] || '{}');
+        const verdict = verdictObj.verdict === true;
+        console.log(
+          `  [Relevance] Job #${index + 1} "${jobTitle}" → ${verdict ? '✓ relevant' : '✗ not relevant'}`
+        );
+        return verdict;
+      } catch {
+        console.warn(
+          `  [Relevance] Job #${index + 1} "${jobTitle}" → ✗ parse error, defaulting to false`
+        );
+        return false;
+      }
+    };
+
+    const { results: relevanceResults, failedBatches: relevanceFailedBatches } =
+      await processInBatches(jobs, checkRelevance, 'Relevance');
+
+    if (relevanceFailedBatches.length > 0) {
+      console.warn(
+        `[Relevance] ${relevanceFailedBatches.length} batch(es) failed entirely: batches [${relevanceFailedBatches.join(', ')}]`
+      );
+    }
+
+    const relevantJobs = jobs.filter((_, idx) => relevanceResults[idx] === true);
+
+    console.log(`[Relevance] ${relevantJobs.length}/${jobs.length} job(s) passed relevance filter`);
+
+    if (relevantJobs.length === 0) {
+      return next({ statusCode: 400, message: 'No relevant jobs' });
+    }
+
+    // ─── Step 2: Tailor resumes (batched) ─────────────────────────────────────
+    const tailorSingleJob = async (job: any, index: number): Promise<any> => {
       const jobTitle = job.job_title || 'this role';
       const company = job.company || 'the company';
+      console.log(`  [Tailor] Tailoring job #${index + 1}: "${jobTitle}" at ${company}`);
 
       const prompt = `You are an expert resume writer and LaTeX specialist with deep knowledge of ATS optimization and recruiter preferences.
 
@@ -217,7 +345,7 @@ TARGET JOB TITLE: ${jobTitle}
 TARGET COMPANY: ${company}
 
 JOB DESCRIPTION:
-${jobDesc}
+${job.job_description || job.description || ''}
 
 INSTRUCTIONS:
 1. Analyze the job description for key skills, technologies, and requirements
@@ -237,109 +365,32 @@ OUTPUT RULES:
 - Must be complete and compilable in Overleaf as-is`;
 
       const aiResume = await generateText(prompt);
-      const cleanedLatex = cleanLatex(aiResume);
-
-      if (!cleanedLatex.startsWith('\\documentclass')) {
-        console.warn(`Warning: job "${jobTitle}" may have invalid LaTeX output`);
-        console.warn('Output starts with:', cleanedLatex.substring(0, 100));
-      }
-
-      return {
-        job_title: job.job_title,
-        company: job.company,
-        job_description: job.job_description,
-        tailoredResume: cleanedLatex,
-        employmentType: job?.employment_type,
-        apply_url: job?.apply_url,
-        job_url: job?.job_url,
-        job_id: job?.job_id,
-      };
-    };
-
-    const processBatchWithRetry = async (
-      batch: any[],
-      batchNumber: number,
-      totalBatches: number
-    ): Promise<{ success: boolean; results: any[]; error?: string }> => {
-      let attempt = 0;
-
-      while (attempt <= MAX_RETRIES) {
-        try {
-          if (attempt > 0) {
-            const retryDelay = DELAY_MS * RETRY_MULTIPLIER * attempt;
-            console.log(
-              `Retry attempt ${attempt}/${MAX_RETRIES} for batch ${batchNumber}. Waiting ${retryDelay}ms...`
-            );
-            await sleep(retryDelay);
-          }
-
-          console.log(
-            `Processing batch ${batchNumber} of ${totalBatches} (${batch.length} jobs) — attempt ${attempt + 1}...`
-          );
-
-          const results = await Promise.all(batch.map((job) => tailorSingleJob(job)));
-
-          console.log(`Batch ${batchNumber} completed successfully.`);
-          return { success: true, results };
-        } catch (error: any) {
-          console.error(
-            `Batch ${batchNumber} attempt ${attempt + 1} failed:`,
-            error?.message || error
-          );
-          attempt++;
-
-          if (attempt > MAX_RETRIES) {
-            console.error(
-              `Batch ${batchNumber} failed after ${MAX_RETRIES + 1} attempts. Skipping.`
-            );
-            return {
-              success: false,
-              results: [],
-              error: error?.message || 'Unknown error',
-            };
-          }
-        }
-      }
-
-      return { success: false, results: [], error: 'Max retries exceeded' };
-    };
-
-    const tailoredJobs: any[] = [];
-    const failedBatches: number[] = [];
-    const totalBatches = Math.ceil(jobs.length / BATCH_SIZE);
-
-    for (let i = 0; i < jobs.length; i += BATCH_SIZE) {
-      const batch = jobs.slice(i, i + BATCH_SIZE);
-      const currentBatch = Math.floor(i / BATCH_SIZE) + 1;
-
-      const { success, results, error } = await processBatchWithRetry(
-        batch,
-        currentBatch,
-        totalBatches
+      const cleaned = cleanLatex(aiResume);
+      console.log(
+        `  [Tailor] Job #${index + 1} "${jobTitle}" → ✓ tailored (${cleaned.length} chars)`
       );
+      return { ...job, tailoredResume: cleaned };
+    };
 
-      if (success) {
-        tailoredJobs.push(...results);
-      } else {
-        failedBatches.push(currentBatch);
-        console.error(`Batch ${currentBatch} ultimately failed: ${error}`);
-      }
+    const { results: tailorResults, failedBatches: tailorFailedBatches } = await processInBatches(
+      relevantJobs,
+      tailorSingleJob,
+      'Tailor'
+    );
 
-      console.log(`Total processed so far: ${tailoredJobs.length}/${jobs.length}`);
+    const tailoredJobs = tailorResults.filter((r): r is NonNullable<typeof r> => r !== null);
 
-      if (i + BATCH_SIZE < jobs.length) {
-        console.log(`Waiting ${DELAY_MS}ms before next batch...`);
-        await sleep(DELAY_MS);
-      }
-    }
+    console.log(
+      `[Tailor] ${tailoredJobs.length}/${relevantJobs.length} resume(s) tailored successfully`
+    );
 
     res.status(200).json({
       message:
-        failedBatches.length > 0
-          ? `Completed with some failures. ${failedBatches.length} batch(es) failed.`
+        tailorFailedBatches.length > 0
+          ? `Completed with some failures. ${tailorFailedBatches.length} batch(es) failed.`
           : 'Tailored resumes generated successfully',
       total: tailoredJobs.length,
-      failed_batches: failedBatches,
+      failed_batches: tailorFailedBatches,
       data: tailoredJobs,
     });
   } catch (error) {

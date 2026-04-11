@@ -11,7 +11,8 @@ import reviewRoutes from './routes/reviews';
 import locationRoutes from './routes/location';
 import aiRoutes from './routes/ai';
 const bootstrap = async () => {
-  await mongo.connect();
+  // await mongo.connect();
+
   app.get('/', (req, res) => {
     res.status(200).send('Hello, world!');
   });
