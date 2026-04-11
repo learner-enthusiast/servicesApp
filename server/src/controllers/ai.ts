@@ -11,7 +11,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 // --- Unified AI text generator with Gemini → OpenAI fallback ---
-async function generateText(prompt: string): Promise<string> {
+async function generateText(prompt: string, model: string = 'gpt-4.1'): Promise<string> {
   // try {
   //   const response = await ai.models.generateContent({
   //     model: 'gemini-2.0-flash',
@@ -24,7 +24,7 @@ async function generateText(prompt: string): Promise<string> {
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: model,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
     });
@@ -170,7 +170,7 @@ Return a JSON object with this exact structure, no markdown or explanation:
 
 export const tailorResume: RequestHandler = async (req, res, next) => {
   try {
-    const { jobs, resume } = req.body;
+    const { jobs, resume, resumelatex } = req.body;
 
     if (!Array.isArray(jobs) || !resume) {
       return next({ statusCode: 400, message: 'jobs (array) and resume (text) are required' });
@@ -202,12 +202,14 @@ export const tailorResume: RequestHandler = async (req, res, next) => {
         delayMs?: number;
         maxRetries?: number;
         retryMultiplier?: number;
+        model?: string;
       }
     ): Promise<{ results: (TOutput | null)[]; failedBatches: number[] }> => {
       const batchSize = options?.batchSize ?? BATCH_SIZE;
       const delayMs = options?.delayMs ?? DELAY_MS;
       const maxRetries = options?.maxRetries ?? MAX_RETRIES;
       const retryMultiplier = options?.retryMultiplier ?? RETRY_MULTIPLIER;
+      const model = options?.model ?? 'gpt-4.1';
 
       const totalBatches = Math.ceil(items.length / batchSize);
       const allResults: (TOutput | null)[] = new Array(items.length).fill(null);
@@ -296,7 +298,7 @@ Is this job relevant to the candidate's profile?
 Respond only with a JSON object: {"verdict": true} if relevant, {"verdict": false} if not. No explanation, no markdown.
 `;
       try {
-        const aiResponse = await generateText(prompt);
+        const aiResponse = await generateText(prompt, 'gpt-4.1-mini');
         const verdictObj = JSON.parse(aiResponse.match(/\{[\s\S]*\}/)?.[0] || '{}');
         const verdict = verdictObj.verdict === true;
         console.log(
@@ -331,15 +333,18 @@ Respond only with a JSON object: {"verdict": true} if relevant, {"verdict": fals
     // ─── Step 2: Tailor resumes (batched) ─────────────────────────────────────
     const tailorSingleJob = async (job: any, index: number): Promise<any> => {
       const jobTitle = job.job_title || 'this role';
-      const company = job.company || 'the company';
+      const company = job.company_name || 'the company';
       console.log(`  [Tailor] Tailoring job #${index + 1}: "${jobTitle}" at ${company}`);
 
-      const prompt = `You are an expert resume writer and LaTeX specialist with deep knowledge of ATS optimization and recruiter preferences.
+      const prompt = `You are an expert resume writer and LaTeX specialist. Your ONLY job is to swap out text content in an existing LaTeX resume — nothing else.
 
-TASK: Tailor the provided LaTeX resume for the specific job description below.
+TASK: Replace specific text content in the LaTeX resume below to target the given job. The output must be a character-for-character identical copy of the LaTeX resume EXCEPT for the text content changes listed in the instructions.
 
-CANDIDATE RESUME (LaTeX):
+CANDIDATE RESUME (TEXT — use this to understand the candidate's background):
 ${resume}
+
+CANDIDATE RESUME (LaTeX — this is your TEMPLATE, follow it with absolute strictness):
+${resumelatex}
 
 TARGET JOB TITLE: ${jobTitle}
 TARGET COMPANY: ${company}
@@ -347,15 +352,33 @@ TARGET COMPANY: ${company}
 JOB DESCRIPTION:
 ${job.job_description || job.description || ''}
 
-INSTRUCTIONS:
-1. Analyze the job description for key skills, technologies, and requirements
-2. Rewrite the resume summary to directly address this specific role and company
-3. Reorder and emphasize experiences that best match the job requirements
-4. Incorporate relevant keywords from the job description naturally throughout
-5. Keep all factual information accurate - do not fabricate any experience or skills
-6. Maintain the exact same LaTeX structure, packages, and custom commands
-7. Ensure all LaTeX commands are valid and will compile without errors in Overleaf
-8. Keep the same overall length and formatting style as the original
+WHAT YOU MAY CHANGE (text content only):
+- The resume summary/objective paragraph
+- Individual bullet point descriptions under experience entries
+- The skills/technologies list values
+
+WHAT YOU MUST NEVER CHANGE:
+- Any \\vspace, \\hspace, \\smallskip, \\medskip, \\bigskip, or ANY spacing command
+- Any \\begin{...} or \\end{...} environment — name, order, or nesting
+- Any \\newcommand, \\def, or custom macro definitions
+- Font size commands: \\tiny, \\small, \\large, \\Large, \\LARGE, \\huge, etc.
+- Font style commands: \\textbf, \\textit, \\underline, \\textcolor, etc.
+- Section headers and their formatting
+- Column counts, tabular structure, minipage widths
+- \\documentclass, \\usepackage, preamble — copy them verbatim
+- Margins, geometry settings
+- Dates, company names, job titles, institution names, degrees — copy them verbatim
+- The number of bullet points per section — do not add or remove any
+- Page layout — output must fit exactly one page, identical to the template
+
+STRICT RULE: If you are unsure whether something is "text content" or "structure", DO NOT change it. Copy it exactly from the LaTeX template.
+
+VERIFICATION CHECKLIST (apply mentally before outputting):
+1. Does my output have the exact same number of \\begin/\\end pairs as the template? 
+2. Are all spacing commands identical to the template?
+3. Are all custom macros and preamble lines copied verbatim?
+4. Have I kept the same number of bullet points in every section?
+5. Does the rendered output fit on one page?
 
 OUTPUT RULES:
 - Output ONLY raw LaTeX code
