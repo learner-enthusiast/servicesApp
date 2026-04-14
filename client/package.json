@@ -34,7 +34,7 @@
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.577.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.1",
     "react-scripts": "5.0.1",
     "shepherd.js": "^15.2.1",
@@ -44,7 +44,7 @@
   "devDependencies": {
     "@types/lodash.debounce": "^4.0.9",
     "@types/react": "^19.0.12",
-    "@types/react-dom": "^19.0.4",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.27",
     "postcss": "^8.5.8",
     "serve": "^14.2.5",
