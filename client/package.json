@@ -29,7 +29,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.5.0",
-    "@mui/material": "^6.4.8",
+    "@mui/material": "^7.3.9",
     "axios": "^1.13.1",
     "lodash.debounce": "^4.0.8",
     "lucide-react": "^0.577.0",
